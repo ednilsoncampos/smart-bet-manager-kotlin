@@ -142,14 +142,14 @@ class BankrollEvolutionService(
         
         val zoneId = ZoneId.systemDefault()
         val points = mutableListOf<BankrollEvolutionPoint>()
-        
+
         // Agrupar por dia
         val byDate = transactions.groupBy { tx ->
-            Instant.ofEpochMilli(tx.createdAt)
+            tx.createdAt
                 .atZone(zoneId)
                 .toLocalDate()
         }
-        
+
         var runningBalance = BigDecimal.ZERO
         var totalDeposited = BigDecimal.ZERO
         
@@ -218,15 +218,13 @@ class BankrollEvolutionService(
         
         val zoneId = ZoneId.systemDefault()
         val points = mutableListOf<BankrollEvolutionPoint>()
-        
-        // Agrupar por dia
-        val byDate = tickets.groupBy { ticket ->
-            val timestamp = ticket.settledAt ?: ticket.createdAt
-            Instant.ofEpochMilli(timestamp)
+
+        val byDate = tickets.groupBy {
+            (it.settledAt ?: it.createdAt)
                 .atZone(zoneId)
                 .toLocalDate()
         }
-        
+
         var totalStaked = BigDecimal.ZERO
         var totalReturns = BigDecimal.ZERO
         

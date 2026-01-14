@@ -109,7 +109,7 @@ data class TicketResponse(
 }
 
 data class SelectionResponse(
-    val id: Long,
+    val id: Long?,
     val eventName: String,
     val tournamentName: String?,
     val marketType: String?,
@@ -122,7 +122,7 @@ data class SelectionResponse(
     companion object {
         fun fromDomain(selection: BetSelection): SelectionResponse {
             return SelectionResponse(
-                id = selection.id!!,
+                id = selection.id,
                 eventName = selection.eventName,
                 tournamentName = selection.tournamentName,
                 marketType = selection.marketType,

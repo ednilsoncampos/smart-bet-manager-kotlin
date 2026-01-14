@@ -6,6 +6,7 @@ import com.smartbet.application.dto.ListTicketsRequest
 import com.smartbet.domain.enum.BetType
 import com.smartbet.domain.enum.FinancialStatus
 import com.smartbet.domain.enum.TicketStatus
+import com.smartbet.infrastructure.persistence.entity.BetSelectionEntity
 import com.smartbet.infrastructure.persistence.entity.BetTicketEntity
 import com.smartbet.infrastructure.persistence.entity.BettingProviderEntity
 import com.smartbet.infrastructure.persistence.repository.BetSelectionRepository
@@ -97,12 +98,13 @@ class TicketServiceTest {
                 totalOdd = BigDecimal("2.50"),
                 potentialPayout = BigDecimal("250.00"),
                 ticketStatus = TicketStatus.OPEN,
-                financialStatus = FinancialStatus.PENDING
+                financialStatus = FinancialStatus.PENDING,
+                selections = mutableListOf()
             )
             
             every { providerRepository.findById(providerId) } returns Optional.of(provider)
             every { ticketRepository.save(any()) } returns savedTicket
-            every { selectionRepository.saveAll(any<List<Any>>()) } returns emptyList()
+            every { selectionRepository.saveAll(any<List<BetSelectionEntity>>()) } returns emptyList()
             
             // Act
             val result = ticketService.createManual(userId, request)
