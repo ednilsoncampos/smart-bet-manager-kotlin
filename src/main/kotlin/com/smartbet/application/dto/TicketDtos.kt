@@ -1,0 +1,147 @@
+package com.smartbet.application.dto
+
+import com.smartbet.domain.entity.BetSelection
+import com.smartbet.domain.entity.BetTicket
+import com.smartbet.domain.enum.*
+import java.math.BigDecimal
+import java.time.Instant
+
+// ============================================
+// Request DTOs
+// ============================================
+
+data class ImportTicketRequest(
+    val url: String,
+    val bankrollId: Long? = null
+)
+
+data class CreateManualTicketRequest(
+    val providerId: Long,
+    val bankrollId: Long? = null,
+    val betType: BetType = BetType.SINGLE,
+    val stake: BigDecimal,
+    val totalOdd: BigDecimal,
+    val potentialPayout: BigDecimal? = null,
+    val systemDescription: String? = null,
+    val placedAt: Instant? = null,
+    val selections: List<CreateSelectionRequest>
+)
+
+data class CreateSelectionRequest(
+    val eventName: String,
+    val tournamentName: String? = null,
+    val marketType: String? = null,
+    val selection: String,
+    val odd: BigDecimal,
+    val eventDate: Instant? = null
+)
+
+data class UpdateTicketStatusRequest(
+    val ticketId: Long,
+    val actualPayout: BigDecimal? = null,
+    val ticketStatus: TicketStatus? = null
+)
+
+data class ListTicketsRequest(
+    val status: TicketStatus? = null,
+    val financialStatus: FinancialStatus? = null,
+    val providerId: Long? = null,
+    val page: Int = 0,
+    val pageSize: Int = 20
+)
+
+// ============================================
+// Response DTOs
+// ============================================
+
+data class TicketResponse(
+    val id: Long,
+    val providerId: Long,
+    val providerName: String?,
+    val bankrollId: Long?,
+    val externalTicketId: String?,
+    val sourceUrl: String?,
+    val betType: BetType,
+    val betSide: BetSide,
+    val stake: BigDecimal,
+    val totalOdd: BigDecimal,
+    val potentialPayout: BigDecimal?,
+    val actualPayout: BigDecimal?,
+    val ticketStatus: TicketStatus,
+    val financialStatus: FinancialStatus,
+    val profitLoss: BigDecimal,
+    val roi: BigDecimal,
+    val systemDescription: String?,
+    val placedAt: Instant?,
+    val settledAt: Instant?,
+    val selections: List<SelectionResponse>,
+    val createdAt: Instant,
+    val updatedAt: Instant
+) {
+    companion object {
+        fun fromDomain(ticket: BetTicket, providerName: String? = null): TicketResponse {
+            return TicketResponse(
+                id = ticket.id!!,
+                providerId = ticket.providerId,
+                providerName = providerName,
+                bankrollId = ticket.bankrollId,
+                externalTicketId = ticket.externalTicketId,
+                sourceUrl = ticket.sourceUrl,
+                betType = ticket.betType,
+                betSide = ticket.betSide,
+                stake = ticket.stake,
+                totalOdd = ticket.totalOdd,
+                potentialPayout = ticket.potentialPayout,
+                actualPayout = ticket.actualPayout,
+                ticketStatus = ticket.ticketStatus,
+                financialStatus = ticket.financialStatus,
+                profitLoss = ticket.profitLoss,
+                roi = ticket.roi,
+                systemDescription = ticket.systemDescription,
+                placedAt = ticket.placedAt,
+                settledAt = ticket.settledAt,
+                selections = ticket.selections.map { SelectionResponse.fromDomain(it) },
+                createdAt = ticket.createdAt,
+                updatedAt = ticket.updatedAt
+            )
+        }
+    }
+}
+
+data class SelectionResponse(
+    val id: Long,
+    val eventName: String,
+    val tournamentName: String?,
+    val marketType: String?,
+    val selection: String,
+    val odd: BigDecimal,
+    val status: SelectionStatus,
+    val eventDate: Instant?,
+    val eventResult: String?
+) {
+    companion object {
+        fun fromDomain(selection: BetSelection): SelectionResponse {
+            return SelectionResponse(
+                id = selection.id!!,
+                eventName = selection.eventName,
+                tournamentName = selection.tournamentName,
+                marketType = selection.marketType,
+                selection = selection.selection,
+                odd = selection.odd,
+                status = selection.status,
+                eventDate = selection.eventDate,
+                eventResult = selection.eventResult
+            )
+        }
+    }
+}
+
+data class PagedResponse<T>(
+    val content: List<T>,
+    val page: Int,
+    val pageSize: Int,
+    val totalElements: Long,
+    val totalPages: Int,
+    val hasNext: Boolean,
+    val hasPrevious: Boolean
+)

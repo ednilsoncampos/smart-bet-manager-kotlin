@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartbet-postgres
+    environment:
+      POSTGRES_DB: smartbet
+      POSTGRES_USER: smartbet
+      POSTGRES_PASSWORD: smartbet123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartbet -d smartbet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - smartbet-network
+
+  # ============================================
+  # Smart Bet Manager API
+  # ============================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: smartbet-api
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      DATABASE_URL: jdbc:postgresql://postgres:5432/smartbet
+      DATABASE_USERNAME: smartbet
+      DATABASE_PASSWORD: smartbet123
+      SERVER_PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - smartbet-network
+
+  # ============================================
+  # pgAdmin (opcional - para gerenciar o banco)
+  # ============================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: smartbet-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@smartbet.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - smartbet-network
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  smartbet-network:
+    driver: bridge

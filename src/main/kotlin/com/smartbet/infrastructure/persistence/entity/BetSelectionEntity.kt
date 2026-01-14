@@ -1,0 +1,92 @@
+package com.smartbet.infrastructure.persistence.entity
+
+import com.smartbet.domain.entity.BetSelection
+import com.smartbet.domain.enum.SelectionStatus
+import jakarta.persistence.*
+import java.math.BigDecimal
+import java.time.Instant
+
+@Entity
+@Table(name = "bet_selections")
+class BetSelectionEntity(
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long? = null,
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ticket_id", nullable = false)
+    var ticket: BetTicketEntity? = null,
+    
+    @Column(name = "external_selection_id", length = 100)
+    var externalSelectionId: String? = null,
+    
+    @Column(name = "event_name", nullable = false)
+    var eventName: String = "",
+    
+    @Column(name = "tournament_name")
+    var tournamentName: String? = null,
+    
+    @Column(name = "market_type", length = 100)
+    var marketType: String? = null,
+    
+    @Column(nullable = false)
+    var selection: String = "",
+    
+    @Column(nullable = false, precision = 10, scale = 4)
+    var odd: BigDecimal = BigDecimal.ZERO,
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 50)
+    var status: SelectionStatus = SelectionStatus.PENDING,
+    
+    @Column(name = "event_date")
+    var eventDate: Instant? = null,
+    
+    @Column(name = "event_result", length = 100)
+    var eventResult: String? = null,
+    
+    @Column(name = "created_at", nullable = false, updatable = false)
+    val createdAt: Instant = Instant.now(),
+    
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Instant = Instant.now()
+) {
+    fun toDomain(): BetSelection = BetSelection(
+        id = id,
+        ticketId = ticket?.id ?: 0,
+        externalSelectionId = externalSelectionId,
+        eventName = eventName,
+        tournamentName = tournamentName,
+        marketType = marketType,
+        selection = selection,
+        odd = odd,
+        status = status,
+        eventDate = eventDate,
+        eventResult = eventResult,
+        createdAt = createdAt,
+        updatedAt = updatedAt
+    )
+    
+    companion object {
+        fun fromDomain(selection: BetSelection, ticketEntity: BetTicketEntity): BetSelectionEntity = BetSelectionEntity(
+            id = selection.id,
+            ticket = ticketEntity,
+            externalSelectionId = selection.externalSelectionId,
+            eventName = selection.eventName,
+            tournamentName = selection.tournamentName,
+            marketType = selection.marketType,
+            selection = selection.selection,
+            odd = selection.odd,
+            status = selection.status,
+            eventDate = selection.eventDate,
+            eventResult = selection.eventResult,
+            createdAt = selection.createdAt,
+            updatedAt = selection.updatedAt
+        )
+    }
+    
+    @PreUpdate
+    fun preUpdate() {
+        updatedAt = Instant.now()
+    }
+}

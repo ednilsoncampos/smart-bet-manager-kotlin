@@ -1,0 +1,93 @@
+package com.smartbet.domain.entity
+
+import com.smartbet.domain.enum.BetSide
+import com.smartbet.domain.enum.BetType
+import com.smartbet.domain.enum.FinancialStatus
+import com.smartbet.domain.enum.TicketStatus
+import java.math.BigDecimal
+import java.time.Instant
+
+/**
+ * Entidade de domínio representando um bilhete de aposta.
+ * 
+ * Esta é a entidade principal do sistema, contendo todas as informações
+ * sobre uma aposta realizada.
+ */
+data class BetTicket(
+    val id: Long? = null,
+    
+    /** ID do usuário dono do bilhete */
+    val userId: Long,
+    
+    /** ID da casa de apostas */
+    val providerId: Long,
+    
+    /** ID da banca associada (opcional) */
+    val bankrollId: Long? = null,
+    
+    /** Código externo do bilhete na casa de apostas */
+    val externalTicketId: String? = null,
+    
+    /** URL original de onde o bilhete foi importado */
+    val sourceUrl: String? = null,
+    
+    /** Tipo de aposta */
+    val betType: BetType = BetType.SINGLE,
+    
+    /** Lado da aposta (BACK/LAY) */
+    val betSide: BetSide = BetSide.BACK,
+    
+    /** Valor apostado */
+    val stake: BigDecimal,
+    
+    /** Odd total do bilhete */
+    val totalOdd: BigDecimal,
+    
+    /** Retorno potencial máximo */
+    val potentialPayout: BigDecimal? = null,
+    
+    /** Retorno real (após resultado) */
+    val actualPayout: BigDecimal? = null,
+    
+    /** Status do bilhete na casa de apostas */
+    val ticketStatus: TicketStatus = TicketStatus.OPEN,
+    
+    /** Status financeiro calculado */
+    val financialStatus: FinancialStatus = FinancialStatus.PENDING,
+    
+    /** Lucro/prejuízo calculado */
+    val profitLoss: BigDecimal = BigDecimal.ZERO,
+    
+    /** ROI calculado (em percentual) */
+    val roi: BigDecimal = BigDecimal.ZERO,
+    
+    /** Descrição do sistema (para apostas de sistema) - ex: "2/3" */
+    val systemDescription: String? = null,
+    
+    /** Data/hora em que a aposta foi realizada */
+    val placedAt: Instant? = null,
+    
+    /** Data/hora em que o bilhete foi resolvido */
+    val settledAt: Instant? = null,
+    
+    /** Seleções do bilhete */
+    val selections: List<BetSelection> = emptyList(),
+    
+    val createdAt: Instant = Instant.now(),
+    val updatedAt: Instant = Instant.now()
+) {
+    /**
+     * Verifica se o bilhete está aberto (aguardando resultado)
+     */
+    fun isOpen(): Boolean = ticketStatus == TicketStatus.OPEN
+    
+    /**
+     * Verifica se o bilhete está resolvido
+     */
+    fun isSettled(): Boolean = ticketStatus != TicketStatus.OPEN
+    
+    /**
+     * Retorna o número de seleções no bilhete
+     */
+    fun selectionCount(): Int = selections.size
+}

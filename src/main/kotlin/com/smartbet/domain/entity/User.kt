@@ -1,0 +1,36 @@
+package com.smartbet.domain.entity
+
+import java.time.Instant
+
+/**
+ * Entidade de domínio representando um usuário do sistema.
+ */
+data class User(
+    val id: Long? = null,
+    
+    /** ID externo (OAuth) */
+    val externalId: String? = null,
+    
+    /** Email do usuário */
+    val email: String,
+    
+    /** Nome do usuário */
+    val name: String,
+    
+    /** URL do avatar */
+    val avatarUrl: String? = null,
+    
+    /** Role do usuário */
+    val role: UserRole = UserRole.USER,
+    
+    /** Se o usuário está ativo */
+    val isActive: Boolean = true,
+    
+    val createdAt: Instant = Instant.now(),
+    val updatedAt: Instant = Instant.now()
+)
+
+enum class UserRole {
+    USER,
+    ADMIN
+}
