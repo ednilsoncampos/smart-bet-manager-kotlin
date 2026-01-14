@@ -64,15 +64,28 @@ springdoc:
     path: /swagger-ui.html
     operationsSorter: method
 
-# Actuator
+# Actuator & Observability
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus
   endpoint:
     health:
       show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    livenessState:
+      enabled: true
+    readinessState:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
 
 ---
 spring:
