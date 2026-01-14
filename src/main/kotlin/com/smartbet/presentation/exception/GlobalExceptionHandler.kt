@@ -4,6 +4,7 @@ import com.smartbet.infrastructure.provider.gateway.HttpGatewayException
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.time.Instant
@@ -12,6 +13,21 @@ import java.time.Instant
 class GlobalExceptionHandler {
     
     private val logger = LoggerFactory.getLogger(GlobalExceptionHandler::class.java)
+    
+    @ExceptionHandler(MethodArgumentNotValidException::class)
+    fun handleValidation(ex: MethodArgumentNotValidException): ResponseEntity<ValidationErrorResponse> {
+        logger.warn("Validation error: {}", ex.message)
+        val errors = ex.bindingResult.fieldErrors.associate { it.field to (it.defaultMessage ?: "Invalid value") }
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ValidationErrorResponse(
+                status = HttpStatus.BAD_REQUEST.value(),
+                error = "Validation Error",
+                message = "Dados inválidos na requisição",
+                errors = errors,
+                timestamp = Instant.now()
+            ))
+    }
     
     @ExceptionHandler(IllegalArgumentException::class)
     fun handleIllegalArgument(ex: IllegalArgumentException): ResponseEntity<ErrorResponse> {
@@ -83,5 +99,13 @@ data class ErrorResponse(
     val status: Int,
     val error: String,
     val message: String,
+    val timestamp: Instant
+)
+
+data class ValidationErrorResponse(
+    val status: Int,
+    val error: String,
+    val message: String,
+    val errors: Map<String, String>,
     val timestamp: Instant
 )

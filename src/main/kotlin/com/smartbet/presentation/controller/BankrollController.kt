@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -20,7 +21,7 @@ class BankrollController(
     @Operation(summary = "Criar banca", description = "Cria uma nova banca de apostas")
     fun create(
         @AuthenticationPrincipal userId: Long,
-        @RequestBody request: CreateBankrollRequest
+        @Valid @RequestBody request: CreateBankrollRequest
     ): ResponseEntity<BankrollResponse> {
         val bankroll = bankrollService.create(userId, request)
         return ResponseEntity.status(HttpStatus.CREATED).body(bankroll)
@@ -59,7 +60,7 @@ class BankrollController(
     fun recordTransaction(
         @AuthenticationPrincipal userId: Long,
         @PathVariable id: Long,
-        @RequestBody request: RecordTransactionRequest
+        @Valid @RequestBody request: RecordTransactionRequest
     ): ResponseEntity<TransactionResponse> {
         val updatedRequest = request.copy(bankrollId = id)
         val transaction = bankrollService.recordTransaction(userId, updatedRequest)

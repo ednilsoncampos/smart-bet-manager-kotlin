@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
+import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -22,7 +23,7 @@ class TicketController(
     @Operation(summary = "Importar bilhete via URL", description = "Importa um bilhete a partir de uma URL compartilhada")
     fun importFromUrl(
         @AuthenticationPrincipal userId: Long,
-        @RequestBody request: ImportTicketRequest
+        @Valid @RequestBody request: ImportTicketRequest
     ): ResponseEntity<TicketResponse> {
         val ticket = ticketService.importFromUrl(userId, request)
         return ResponseEntity.status(HttpStatus.CREATED).body(ticket)
@@ -32,7 +33,7 @@ class TicketController(
     @Operation(summary = "Criar bilhete manual", description = "Cria um bilhete manualmente")
     fun createManual(
         @AuthenticationPrincipal userId: Long,
-        @RequestBody request: CreateManualTicketRequest
+        @Valid @RequestBody request: CreateManualTicketRequest
     ): ResponseEntity<TicketResponse> {
         val ticket = ticketService.createManual(userId, request)
         return ResponseEntity.status(HttpStatus.CREATED).body(ticket)
@@ -74,7 +75,7 @@ class TicketController(
     fun updateStatus(
         @AuthenticationPrincipal userId: Long,
         @PathVariable id: Long,
-        @RequestBody request: UpdateTicketStatusRequest
+        @Valid @RequestBody request: UpdateTicketStatusRequest
     ): ResponseEntity<TicketResponse> {
         val updatedRequest = request.copy(ticketId = id)
         val ticket = ticketService.updateStatus(userId, updatedRequest)

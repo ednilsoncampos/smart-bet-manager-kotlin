@@ -48,6 +48,13 @@ dependencies {
     // OpenAPI/Swagger
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
     
+    // Observability - Logging (JSON format for production)
+    implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
+    implementation("ch.qos.logback.contrib:logback-jackson:0.1.5")
+    
+    // Observability - Metrics (Prometheus)
+    implementation("io.micrometer:micrometer-registry-prometheus")
+    
     // Testing
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
