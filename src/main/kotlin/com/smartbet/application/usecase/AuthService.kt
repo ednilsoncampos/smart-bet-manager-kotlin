@@ -37,7 +37,7 @@ class AuthService(
         
         // Gerar tokens
         val accessToken = jwtService.generateAccessToken(savedUser.id!!, savedUser.email)
-        val refreshToken = jwtService.generateRefreshToken(savedUser.id!!, savedUser.email)
+        val refreshToken = jwtService.generateRefreshToken(savedUser.id, savedUser.email)
         
         return AuthResponse(
             accessToken = accessToken,
