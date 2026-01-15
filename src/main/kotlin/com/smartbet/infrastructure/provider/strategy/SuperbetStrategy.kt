@@ -234,6 +234,9 @@ class SuperbetStrategy(
                         .ifEmpty { component.path("status").asText().lowercase() }
                     val componentStatus = mapSelectionStatus(componentStatusStr)
                     
+                    // Usa a odd do evento (não divide)
+                    val componentOdd = eventOdd.takeIf { it > 0 } ?: 1.0
+                    
                     selections.add(
                         ParsedSelectionData(
                             externalSelectionId = oddComponent.path("oddUuid").asText()
@@ -243,7 +246,7 @@ class SuperbetStrategy(
                             tournamentName = null, // Superbet não retorna torneio diretamente
                             marketType = marketName,
                             selection = selectionName,
-                            odd = BigDecimal.valueOf(eventOdd / eventComponents.size()), // Divide a odd pelos componentes
+                            odd = BigDecimal.valueOf(componentOdd),
                             status = componentStatus,
                             eventDate = eventDate,
                             eventResult = null
