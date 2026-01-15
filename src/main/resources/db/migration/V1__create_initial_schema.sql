@@ -1,4 +1,4 @@
--- Smart Bet Manager - Initial Schema
+-- Smart Bet Manager - Initial Schema with password_hash
 -- Version: 1.0.0
 
 -- ============================================
@@ -12,8 +12,9 @@ CREATE TABLE users (
     avatar_url VARCHAR(500),
     role VARCHAR(50) NOT NULL DEFAULT 'USER',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    password_hash VARCHAR(255),
+    created_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000)),
+    updated_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000))
 );
 
 CREATE INDEX idx_users_email ON users(email);
@@ -30,8 +31,8 @@ CREATE TABLE betting_providers (
     api_url_template VARCHAR(500),
     website_url VARCHAR(255),
     logo_url VARCHAR(500),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    created_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000)),
+    updated_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000))
 );
 
 CREATE INDEX idx_betting_providers_slug ON betting_providers(slug);
@@ -56,8 +57,8 @@ CREATE TABLE bankrolls (
     total_staked DECIMAL(15, 2) NOT NULL DEFAULT 0,
     total_returns DECIMAL(15, 2) NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    created_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000)),
+    updated_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000))
 );
 
 CREATE INDEX idx_bankrolls_user_id ON bankrolls(user_id);
@@ -84,10 +85,10 @@ CREATE TABLE bet_tickets (
     profit_loss DECIMAL(15, 2) NOT NULL DEFAULT 0,
     roi DECIMAL(10, 4) NOT NULL DEFAULT 0,
     system_description VARCHAR(50),
-    placed_at TIMESTAMP WITH TIME ZONE,
-    settled_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    placed_at BIGINT,
+    settled_at BIGINT,
+    created_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000)),
+    updated_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000))
 );
 
 CREATE INDEX idx_bet_tickets_user_id ON bet_tickets(user_id);
@@ -111,10 +112,10 @@ CREATE TABLE bet_selections (
     selection VARCHAR(255) NOT NULL,
     odd DECIMAL(10, 4) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
-    event_date TIMESTAMP WITH TIME ZONE,
+    event_date BIGINT,
     event_result VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    created_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000)),
+    updated_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000))
 );
 
 CREATE INDEX idx_bet_selections_ticket_id ON bet_selections(ticket_id);
@@ -133,7 +134,7 @@ CREATE TABLE bankroll_transactions (
     amount DECIMAL(15, 2) NOT NULL,
     balance_after DECIMAL(15, 2) NOT NULL,
     description VARCHAR(255),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    created_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000))
 );
 
 CREATE INDEX idx_bankroll_transactions_bankroll_id ON bankroll_transactions(bankroll_id);
@@ -142,7 +143,7 @@ CREATE INDEX idx_bankroll_transactions_type ON bankroll_transactions(type);
 CREATE INDEX idx_bankroll_transactions_created_at ON bankroll_transactions(created_at);
 
 -- ============================================
--- Provider API Requests Table (for tracking unsupported providers)
+-- Provider API Requests Table
 -- ============================================
 CREATE TABLE provider_api_requests (
     id BIGSERIAL PRIMARY KEY,
@@ -150,8 +151,8 @@ CREATE TABLE provider_api_requests (
     url VARCHAR(500) NOT NULL,
     provider_name VARCHAR(100),
     request_count INT NOT NULL DEFAULT 1,
-    last_requested_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    last_requested_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000)),
+    created_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000))
 );
 
 CREATE INDEX idx_provider_api_requests_provider_name ON provider_api_requests(provider_name);

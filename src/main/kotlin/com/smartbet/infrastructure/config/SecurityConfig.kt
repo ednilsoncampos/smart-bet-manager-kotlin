@@ -3,6 +3,7 @@ package com.smartbet.infrastructure.config
 import com.smartbet.infrastructure.security.JwtAuthenticationFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
@@ -19,7 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter
 ) {
-    
+
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
         http
@@ -28,6 +29,9 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth
+                    // ALTERADO: liberado endpoint de teste
+                    .requestMatchers("/api/test/**").permitAll()
+
                     // Endpoints públicos (não requerem autenticação)
                     .requestMatchers(
                         "/api/health",
@@ -40,8 +44,12 @@ class SecurityConfig(
                         "/swagger-ui/**",
                         "/swagger-ui.html",
                         "/v3/api-docs/**",
-                        "/actuator/health"
+                        "/actuator/health",
                     ).permitAll()
+
+                    // ALTERADO: liberar preflight OPTIONS (evita 403 em POST)
+                    .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                     // Todos os outros endpoints requerem autenticação
                     .anyRequest().authenticated()
             }
@@ -49,10 +57,11 @@ class SecurityConfig(
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
-        
+
         return http.build()
     }
-    
+
+
     @Bean
     fun passwordEncoder(): PasswordEncoder {
         return BCryptPasswordEncoder()
