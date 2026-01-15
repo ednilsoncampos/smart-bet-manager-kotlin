@@ -15,6 +15,22 @@ import java.time.Instant
  * URLs suportadas:
  * - https://superbet.bet.br/bilhete-compartilhado/{CODE}
  * - https://superbet.com.br/bilhete-compartilhado/{CODE}
+ * 
+ * Estrutura do JSON:
+ * - ticketId: ID do bilhete
+ * - status: win, lost, open, etc.
+ * - coefficient: odd total
+ * - payment.stake: valor apostado
+ * - win.totalWinnings: ganho total
+ * - events[]: lista de eventos/seleções
+ *   - name: ["Time1", "Time2"]
+ *   - date: data do evento
+ *   - status: win, lost, etc.
+ *   - coefficient: odd do evento
+ *   - eventComponents[]: mercados combinados
+ *     - market.name: nome do mercado
+ *     - oddComponent.name: seleção escolhida
+ *     - oddComponent.oddStatus: WIN, LOST, etc.
  */
 @Component
 class SuperbetStrategy(
@@ -45,53 +61,70 @@ class SuperbetStrategy(
     override fun parseResponse(responseBody: String): ParsedTicketData {
         val root = objectMapper.readTree(responseBody)
         
-        // Superbet pode retornar dados em diferentes estruturas
+        // Superbet retorna dados diretamente no root
         val data = root.path("data").takeIf { !it.isMissingNode } ?: root
         
+        // ID do bilhete
         val ticketId = data.path("ticketId").asText()
             .ifEmpty { data.path("id").asText() }
             .ifEmpty { data.path("code").asText() }
         
-        val stake = data.path("stake").asDouble()
+        // Valor apostado - está em payment.stake
+        val stake = data.path("payment").path("stake").asDouble()
+            .takeIf { it > 0 }
+            ?: data.path("stake").asDouble()
             .takeIf { it > 0 }
             ?: data.path("totalStake").asDouble()
         
-        val totalOdd = data.path("totalOdds").asDouble()
+        // Odd total - está em coefficient
+        val totalOdd = data.path("coefficient").asDouble()
             .takeIf { it > 0 }
-            ?: data.path("odds").asDouble()
+            ?: data.path("totalOdds").asDouble()
             .takeIf { it > 0 }
-            ?: calculateTotalOdd(data.path("selections"))
+            ?: calculateTotalOdd(data.path("events"))
         
-        val potentialPayout = data.path("potentialWin").asDouble()
+        // Ganho potencial - está em win.potentialTotalWinnings ou win.potentialPayoff
+        val winNode = data.path("win")
+        val potentialPayout = winNode.path("potentialTotalWinnings").asDouble()
             .takeIf { it > 0 }
-            ?: data.path("potentialPayout").asDouble()
+            ?: winNode.path("potentialPayoff").asDouble()
+            .takeIf { it > 0 }
+            ?: data.path("potentialWin").asDouble()
             .takeIf { it > 0 }
             ?: (stake * totalOdd)
         
-        val actualPayout = data.path("payout").asDouble()
+        // Ganho real - está em win.payoff ou win.totalWinnings
+        val actualPayout = winNode.path("payoff").asDouble()
             .takeIf { it > 0 }
-            ?: data.path("winnings").asDouble()
+            ?: winNode.path("totalWinnings").asDouble()
+            .takeIf { it > 0 }
+            ?: data.path("payout").asDouble()
             .takeIf { it > 0 }
         
+        // Status do bilhete
         val statusStr = data.path("status").asText().lowercase()
         val ticketStatus = mapTicketStatus(statusStr)
         
+        // Tipo de aposta - verifica se tem system
         val betType = determineBetType(data)
-        val systemDescription = data.path("systemType").asText()
-            .takeIf { it.isNotEmpty() && betType == BetType.SYSTEM }
+        val systemDescription = if (betType == BetType.SYSTEM) {
+            val systemNode = data.path("system")
+            val selected = systemNode.path("selected").firstOrNull()?.asInt() ?: 0
+            val count = systemNode.path("count").asInt()
+            if (selected > 0 && count > 0) "$selected/$count" else null
+        } else null
         
-        val placedAt = data.path("placedAt").asText()
+        // Datas
+        val placedAt = data.path("dateReceived").asText()
             .takeIf { it.isNotEmpty() }
             ?.let { parseTimestamp(it) }
-            ?: data.path("createdAt").asText()
-                .takeIf { it.isNotEmpty() }
-                ?.let { parseTimestamp(it) }
         
-        val settledAt = data.path("settledAt").asText()
-            .takeIf { it.isNotEmpty() }
+        val settledAt = data.path("dateLastModified").asText()
+            .takeIf { it.isNotEmpty() && ticketStatus != TicketStatus.OPEN }
             ?.let { parseTimestamp(it) }
         
-        val selections = parseSelections(data.path("selections"))
+        // Seleções - estão em "events"
+        val selections = parseSelections(data.path("events"))
         
         return ParsedTicketData(
             externalTicketId = ticketId,
@@ -108,14 +141,14 @@ class SuperbetStrategy(
         )
     }
     
-    private fun calculateTotalOdd(selections: JsonNode): Double {
-        if (selections.isMissingNode || !selections.isArray) return 1.0
+    private fun calculateTotalOdd(events: JsonNode): Double {
+        if (events.isMissingNode || !events.isArray) return 1.0
         
         var totalOdd = 1.0
-        for (selection in selections) {
-            val odd = selection.path("odds").asDouble()
+        for (event in events) {
+            val odd = event.path("coefficient").asDouble()
                 .takeIf { it > 0 }
-                ?: selection.path("odd").asDouble()
+                ?: event.path("odd").path("coefficient").asDouble()
                 .takeIf { it > 0 }
                 ?: 1.0
             totalOdd *= odd
@@ -124,91 +157,136 @@ class SuperbetStrategy(
     }
     
     private fun determineBetType(data: JsonNode): BetType {
-        val typeStr = data.path("betType").asText().lowercase()
-        val systemType = data.path("systemType").asText()
-        val selectionsCount = data.path("selections").size()
+        val systemNode = data.path("system")
+        val hasSystem = !systemNode.isMissingNode && systemNode.path("count").asInt() > 0
+        val eventsCount = data.path("events").size()
         
         return when {
-            typeStr.contains("system") || systemType.isNotEmpty() -> BetType.SYSTEM
-            selectionsCount > 1 -> BetType.MULTIPLE
+            hasSystem -> BetType.SYSTEM
+            eventsCount > 1 -> BetType.MULTIPLE
             else -> BetType.SINGLE
         }
     }
     
     private fun mapTicketStatus(status: String): TicketStatus {
         return when {
-            status.contains("open") || status.contains("pending") -> TicketStatus.OPEN
-            status.contains("won") || status.contains("win") -> TicketStatus.WON
-            status.contains("lost") || status.contains("lose") -> TicketStatus.LOST
+            status.contains("open") || status.contains("pending") || status.contains("active") -> TicketStatus.OPEN
+            status.contains("won") || status == "win" -> TicketStatus.WON
+            status.contains("lost") || status == "lose" -> TicketStatus.LOST
             status.contains("void") || status.contains("cancelled") -> TicketStatus.VOID
             status.contains("cashout") || status.contains("cashed") -> TicketStatus.CASHOUT
             else -> TicketStatus.OPEN
         }
     }
     
-    private fun parseSelections(selectionsNode: JsonNode): List<ParsedSelectionData> {
-        if (selectionsNode.isMissingNode || !selectionsNode.isArray) {
+    /**
+     * Parseia os eventos do bilhete.
+     * Cada evento pode ter múltiplos eventComponents (mercados combinados).
+     * Nesse caso, criamos uma seleção para cada eventComponent.
+     */
+    private fun parseSelections(eventsNode: JsonNode): List<ParsedSelectionData> {
+        if (eventsNode.isMissingNode || !eventsNode.isArray) {
             return emptyList()
         }
         
-        return selectionsNode.map { node ->
-            val eventName = node.path("eventName").asText()
-                .ifEmpty { node.path("event").path("name").asText() }
-                .ifEmpty { "${node.path("homeTeam").asText()} x ${node.path("awayTeam").asText()}" }
+        val selections = mutableListOf<ParsedSelectionData>()
+        
+        for (event in eventsNode) {
+            // Nome do evento - array ["Time1", "Time2"]
+            val nameArray = event.path("name")
+            val eventName = if (nameArray.isArray && nameArray.size() >= 2) {
+                "${nameArray[0].asText()} x ${nameArray[1].asText()}"
+            } else {
+                nameArray.asText().ifEmpty { "Evento desconhecido" }
+            }
             
-            val tournamentName = node.path("tournamentName").asText()
-                .ifEmpty { node.path("competition").path("name").asText() }
-                .ifEmpty { node.path("league").asText() }
+            // Data do evento
+            val eventDate = event.path("date").asText()
                 .takeIf { it.isNotEmpty() }
+                ?.let { parseTimestamp(it) }
             
-            val marketType = node.path("marketName").asText()
-                .ifEmpty { node.path("market").path("name").asText() }
-                .ifEmpty { node.path("betType").asText() }
-                .takeIf { it.isNotEmpty() }
+            // Status do evento
+            val eventStatusStr = event.path("status").asText().lowercase()
+            val eventStatus = mapSelectionStatus(eventStatusStr)
             
-            val selection = node.path("outcomeName").asText()
-                .ifEmpty { node.path("outcome").path("name").asText() }
-                .ifEmpty { node.path("selection").asText() }
-            
-            val odd = node.path("odds").asDouble()
+            // Odd do evento
+            val eventOdd = event.path("coefficient").asDouble()
                 .takeIf { it > 0 }
-                ?: node.path("odd").asDouble()
+                ?: event.path("odd").path("coefficient").asDouble()
                 .takeIf { it > 0 }
                 ?: 1.0
             
-            val statusStr = node.path("status").asText().lowercase()
-            val status = mapSelectionStatus(statusStr)
+            // Verifica se tem eventComponents (mercados combinados)
+            val eventComponents = event.path("eventComponents")
             
-            val eventDate = node.path("eventDate").asText()
-                .takeIf { it.isNotEmpty() }
-                ?.let { parseTimestamp(it) }
-                ?: node.path("startTime").asText()
+            if (!eventComponents.isMissingNode && eventComponents.isArray && eventComponents.size() > 0) {
+                // Múltiplos mercados no mesmo evento - criar uma seleção para cada
+                for (component in eventComponents) {
+                    val marketName = component.path("market").path("name").asText()
+                        .takeIf { it.isNotEmpty() }
+                    
+                    val oddComponent = component.path("oddComponent")
+                    val selectionName = oddComponent.path("name").asText()
+                        .ifEmpty { "Seleção desconhecida" }
+                    
+                    val componentStatusStr = oddComponent.path("oddStatus").asText().lowercase()
+                        .ifEmpty { oddComponent.path("status").asText().lowercase() }
+                        .ifEmpty { component.path("status").asText().lowercase() }
+                    val componentStatus = mapSelectionStatus(componentStatusStr)
+                    
+                    selections.add(
+                        ParsedSelectionData(
+                            externalSelectionId = oddComponent.path("oddUuid").asText()
+                                .ifEmpty { oddComponent.path("oddId").asText() }
+                                .takeIf { it.isNotEmpty() },
+                            eventName = eventName,
+                            tournamentName = null, // Superbet não retorna torneio diretamente
+                            marketType = marketName,
+                            selection = selectionName,
+                            odd = BigDecimal.valueOf(eventOdd / eventComponents.size()), // Divide a odd pelos componentes
+                            status = componentStatus,
+                            eventDate = eventDate,
+                            eventResult = null
+                        )
+                    )
+                }
+            } else {
+                // Evento simples sem eventComponents
+                val marketName = event.path("market").path("name").asText()
                     .takeIf { it.isNotEmpty() }
-                    ?.let { parseTimestamp(it) }
-            
-            val eventResult = node.path("result").asText()
-                .ifEmpty { node.path("score").asText() }
-                .takeIf { it.isNotEmpty() }
-            
-            ParsedSelectionData(
-                externalSelectionId = node.path("id").asText().takeIf { it.isNotEmpty() },
-                eventName = eventName,
-                tournamentName = tournamentName,
-                marketType = marketType,
-                selection = selection,
-                odd = BigDecimal.valueOf(odd),
-                status = status,
-                eventDate = eventDate,
-                eventResult = eventResult
-            )
+                
+                val oddNode = event.path("odd")
+                val selectionName = oddNode.path("name").asText()
+                    .ifEmpty { event.path("outcomeName").asText() }
+                    .ifEmpty { "Seleção desconhecida" }
+                
+                selections.add(
+                    ParsedSelectionData(
+                        externalSelectionId = oddNode.path("oddUuid").asText()
+                            .ifEmpty { oddNode.path("oddId").asText() }
+                            .ifEmpty { event.path("eventId").asText() }
+                            .takeIf { it.isNotEmpty() },
+                        eventName = eventName,
+                        tournamentName = null,
+                        marketType = marketName,
+                        selection = selectionName,
+                        odd = BigDecimal.valueOf(eventOdd),
+                        status = eventStatus,
+                        eventDate = eventDate,
+                        eventResult = null
+                    )
+                )
+            }
         }
+        
+        return selections
     }
     
     private fun mapSelectionStatus(status: String): SelectionStatus {
         return when {
-            status.contains("pending") || status.contains("open") || status.isEmpty() -> SelectionStatus.PENDING
-            status.contains("won") || status.contains("win") -> SelectionStatus.WON
-            status.contains("lost") || status.contains("lose") -> SelectionStatus.LOST
+            status.contains("pending") || status.contains("open") || status.contains("active") || status.isEmpty() -> SelectionStatus.PENDING
+            status.contains("won") || status == "win" -> SelectionStatus.WON
+            status.contains("lost") || status == "lose" -> SelectionStatus.LOST
             status.contains("void") || status.contains("cancelled") -> SelectionStatus.VOID
             status.contains("cashout") -> SelectionStatus.CASHOUT
             else -> SelectionStatus.PENDING
@@ -220,7 +298,6 @@ class SuperbetStrategy(
      */
     private fun parseTimestamp(timestamp: String): Long? {
         return try {
-            // Tenta diferentes formatos
             when {
                 timestamp.contains("T") -> Instant.parse(timestamp).toEpochMilli()
                 timestamp.matches(Regex("\\d+")) -> timestamp.toLong()
