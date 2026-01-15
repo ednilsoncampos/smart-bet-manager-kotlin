@@ -61,8 +61,12 @@ class SuperbetStrategy(
     override fun parseResponse(responseBody: String): ParsedTicketData {
         val root = objectMapper.readTree(responseBody)
         
-        // Superbet retorna dados diretamente no root
-        val data = root.path("data").takeIf { !it.isMissingNode } ?: root
+        // Superbet pode retornar dados em diferentes estruturas
+        val data = when {
+            root.path("data").isObject -> root.path("data")
+            root.path("ticket").isObject -> root.path("ticket")
+            else -> root
+        }
         
         // ID do bilhete
         val ticketId = data.path("ticketId").asText()
@@ -91,6 +95,8 @@ class SuperbetStrategy(
             .takeIf { it > 0 }
             ?: data.path("potentialWin").asDouble()
             .takeIf { it > 0 }
+            ?: data.path("potentialPayout").asDouble()
+            .takeIf { it > 0 }
             ?: (stake * totalOdd)
         
         // Ganho real - está em win.payoff ou win.totalWinnings
@@ -109,8 +115,17 @@ class SuperbetStrategy(
         val betType = determineBetType(data)
         val systemDescription = if (betType == BetType.SYSTEM) {
             val systemNode = data.path("system")
-            val selected = systemNode.path("selected").firstOrNull()?.asInt() ?: 0
+            
+            val selected = when {
+                systemNode.path("selected").isArray && systemNode.path("selected").size() > 0 ->
+                    systemNode.path("selected")[0].asInt()
+                systemNode.path("fixed").asInt() > 0 ->
+                    systemNode.path("fixed").asInt()
+                else -> 0
+            }
+            
             val count = systemNode.path("count").asInt()
+            
             if (selected > 0 && count > 0) "$selected/$count" else null
         } else null
         
