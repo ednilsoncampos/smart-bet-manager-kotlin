@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.smartbet.domain.enum.BetType
 import com.smartbet.domain.enum.SelectionStatus
 import com.smartbet.domain.enum.TicketStatus
+import com.smartbet.presentation.exception.InvalidTicketDataException
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.time.Instant
@@ -140,6 +141,9 @@ class SuperbetStrategy(
         
         // Seleções - estão em "events"
         val selections = parseSelections(data.path("events"))
+        
+        // Validar que stake e odd total não estão zerados
+        validateTicketData(ticketId, stake, totalOdd)
         
         return ParsedTicketData(
             externalTicketId = ticketId,
@@ -323,6 +327,25 @@ class SuperbetStrategy(
             }
         } catch (e: Exception) {
             null
+        }
+    }
+    
+    private fun validateTicketData(ticketId: String, stake: Double, totalOdd: Double) {
+        val errors = mutableMapOf<String, String>()
+        
+        if (stake <= 0) {
+            errors["stake"] = "Valor apostado deve ser maior que zero (recebido: $stake)"
+        }
+        
+        if (totalOdd <= 0 || totalOdd == 1.0) {
+            errors["totalOdd"] = "Odd total deve ser maior que 1.0 (recebido: $totalOdd)"
+        }
+        
+        if (errors.isNotEmpty()) {
+            throw InvalidTicketDataException(
+                "Bilhete $ticketId contém dados inválidos: ${errors.values.joinToString(", ")}",
+                errors
+            )
         }
     }
 }

@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.time.Instant
+import java.util.*
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
@@ -51,6 +52,20 @@ class GlobalExceptionHandler {
                 status = HttpStatus.FORBIDDEN.value(),
                 error = "Forbidden",
                 message = ex.message ?: "Access denied",
+                timestamp = Instant.now()
+            ))
+    }
+    
+    @ExceptionHandler(InvalidTicketDataException::class)
+    fun handleInvalidTicketData(ex: InvalidTicketDataException): ResponseEntity<ValidationErrorResponse> {
+        logger.warn("Invalid ticket data: {}", ex.message)
+        return ResponseEntity
+            .status(HttpStatus.UNPROCESSABLE_ENTITY)
+            .body(ValidationErrorResponse(
+                status = HttpStatus.UNPROCESSABLE_ENTITY.value(),
+                error = "Unprocessable Entity",
+                message = ex.message ?: "Dados do bilhete inválidos",
+                errors = ex.details,
                 timestamp = Instant.now()
             ))
     }
