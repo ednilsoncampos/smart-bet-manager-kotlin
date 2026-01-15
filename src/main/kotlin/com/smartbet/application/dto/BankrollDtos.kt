@@ -4,7 +4,6 @@ import com.smartbet.domain.entity.Bankroll
 import com.smartbet.domain.entity.BankrollTransaction
 import com.smartbet.domain.enum.TransactionType
 import java.math.BigDecimal
-import java.time.Instant
 
 // ============================================
 // Request DTOs
@@ -42,8 +41,8 @@ data class BankrollResponse(
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
     val isActive: Boolean,
-    val createdAt: Instant,
-    val updatedAt: Instant
+    val createdAt: Long,
+    val updatedAt: Long
 ) {
     companion object {
         fun fromDomain(bankroll: Bankroll, providerName: String? = null): BankrollResponse {
@@ -76,7 +75,7 @@ data class TransactionResponse(
     val amount: BigDecimal,
     val balanceAfter: BigDecimal,
     val description: String?,
-    val createdAt: Instant
+    val createdAt: Long
 ) {
     companion object {
         fun fromDomain(transaction: BankrollTransaction): TransactionResponse {

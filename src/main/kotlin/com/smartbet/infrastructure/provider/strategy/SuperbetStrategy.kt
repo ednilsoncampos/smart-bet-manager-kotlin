@@ -215,12 +215,15 @@ class SuperbetStrategy(
         }
     }
     
-    private fun parseTimestamp(timestamp: String): Instant? {
+    /**
+     * Parseia timestamp para milissegundos (epoch).
+     */
+    private fun parseTimestamp(timestamp: String): Long? {
         return try {
             // Tenta diferentes formatos
             when {
-                timestamp.contains("T") -> Instant.parse(timestamp)
-                timestamp.matches(Regex("\\d+")) -> Instant.ofEpochMilli(timestamp.toLong())
+                timestamp.contains("T") -> Instant.parse(timestamp).toEpochMilli()
+                timestamp.matches(Regex("\\d+")) -> timestamp.toLong()
                 else -> null
             }
         } catch (e: Exception) {
