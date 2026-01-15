@@ -4,7 +4,6 @@ import com.smartbet.domain.entity.BetSelection
 import com.smartbet.domain.enum.SelectionStatus
 import jakarta.persistence.*
 import java.math.BigDecimal
-import java.time.Instant
 
 @Entity
 @Table(name = "bet_selections")
@@ -40,16 +39,16 @@ class BetSelectionEntity(
     var status: SelectionStatus = SelectionStatus.PENDING,
     
     @Column(name = "event_date")
-    var eventDate: Instant? = null,
+    var eventDate: Long? = null,
     
     @Column(name = "event_result", length = 100)
     var eventResult: String? = null,
     
     @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: Instant = Instant.now(),
+    val createdAt: Long = System.currentTimeMillis(),
     
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant = Instant.now()
+    var updatedAt: Long = System.currentTimeMillis()
 ) {
     fun toDomain(): BetSelection = BetSelection(
         id = id,
@@ -87,6 +86,6 @@ class BetSelectionEntity(
     
     @PreUpdate
     fun preUpdate() {
-        updatedAt = Instant.now()
+        updatedAt = System.currentTimeMillis()
     }
 }

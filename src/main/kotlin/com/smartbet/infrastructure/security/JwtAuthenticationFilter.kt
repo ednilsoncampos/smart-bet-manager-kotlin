@@ -14,6 +14,35 @@ class JwtAuthenticationFilter(
     private val jwtService: JwtService
 ) : OncePerRequestFilter() {
     
+    companion object {
+        private val PUBLIC_PATHS = listOf(
+            "/api/health",
+            "/api/auth/login",
+            "/api/auth/register",
+            "/api/auth/refresh",
+            "/api/providers",
+            "/api/providers/check-url",
+            "/api/test",
+            "/api-docs",
+            "/swagger-ui",
+            "/v3/api-docs",
+            "/actuator"
+        )
+    }
+    
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
+        val path = request.requestURI
+        val method = request.method
+        
+        // Skip filter for OPTIONS requests (CORS preflight)
+        if (method == "OPTIONS") {
+            return true
+        }
+        
+        // Skip filter for public paths
+        return PUBLIC_PATHS.any { path.startsWith(it) }
+    }
+    
     override fun doFilterInternal(
         request: HttpServletRequest,
         response: HttpServletResponse,

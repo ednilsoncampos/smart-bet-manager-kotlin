@@ -1,7 +1,6 @@
 package com.smartbet.domain.entity
 
 import java.math.BigDecimal
-import java.time.Instant
 
 /**
  * Entidade de domínio representando uma banca de apostas.
@@ -41,8 +40,11 @@ data class Bankroll(
     /** Se a banca está ativa */
     val isActive: Boolean = true,
     
-    val createdAt: Instant = Instant.now(),
-    val updatedAt: Instant = Instant.now()
+    /** Timestamp de criação (milissegundos desde epoch UTC) */
+    val createdAt: Long = System.currentTimeMillis(),
+    
+    /** Timestamp de atualização (milissegundos desde epoch UTC) */
+    val updatedAt: Long = System.currentTimeMillis()
 ) {
     /**
      * Calcula o lucro/prejuízo total da banca

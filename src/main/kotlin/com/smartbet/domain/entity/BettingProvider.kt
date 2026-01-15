@@ -1,7 +1,5 @@
 package com.smartbet.domain.entity
 
-import java.time.Instant
-
 /**
  * Entidade de domínio representando uma casa de apostas.
  * 
@@ -28,8 +26,11 @@ data class BettingProvider(
     /** Logo da casa (URL) */
     val logoUrl: String? = null,
     
-    val createdAt: Instant = Instant.now(),
-    val updatedAt: Instant = Instant.now()
+    /** Timestamp de criação (milissegundos desde epoch UTC) */
+    val createdAt: Long = System.currentTimeMillis(),
+    
+    /** Timestamp de atualização (milissegundos desde epoch UTC) */
+    val updatedAt: Long = System.currentTimeMillis()
 ) {
     companion object {
         const val SUPERBET = "superbet"

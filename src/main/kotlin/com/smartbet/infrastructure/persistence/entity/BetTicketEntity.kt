@@ -7,7 +7,6 @@ import com.smartbet.domain.enum.FinancialStatus
 import com.smartbet.domain.enum.TicketStatus
 import jakarta.persistence.*
 import java.math.BigDecimal
-import java.time.Instant
 
 @Entity
 @Table(name = "bet_tickets")
@@ -69,19 +68,19 @@ class BetTicketEntity(
     var systemDescription: String? = null,
     
     @Column(name = "placed_at")
-    var placedAt: Instant? = null,
+    var placedAt: Long? = null,
     
     @Column(name = "settled_at")
-    var settledAt: Instant? = null,
+    var settledAt: Long? = null,
     
     @OneToMany(mappedBy = "ticket", cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.LAZY)
     var selections: MutableList<BetSelectionEntity> = mutableListOf(),
     
     @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: Instant = Instant.now(),
+    val createdAt: Long = System.currentTimeMillis(),
     
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant = Instant.now()
+    var updatedAt: Long = System.currentTimeMillis()
 ) {
     fun toDomain(): BetTicket = BetTicket(
         id = id,
@@ -139,6 +138,6 @@ class BetTicketEntity(
     
     @PreUpdate
     fun preUpdate() {
-        updatedAt = Instant.now()
+        updatedAt = System.currentTimeMillis()
     }
 }

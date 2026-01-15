@@ -29,27 +29,31 @@ class SecurityConfig(
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
             .authorizeHttpRequests { auth ->
                 auth
-                    // ALTERADO: liberado endpoint de teste
-                    .requestMatchers("/api/test/**").permitAll()
-
-                    // Endpoints públicos (não requerem autenticação)
-                    .requestMatchers(
-                        "/api/health",
-                        "/api/auth/login",
-                        "/api/auth/register",
-                        "/api/auth/refresh",
-                        "/api/providers",
-                        "/api/providers/check-url",
-                        "/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html",
-                        "/v3/api-docs/**",
-                        "/actuator/health",
-                    ).permitAll()
-
-                    // ALTERADO: liberar preflight OPTIONS (evita 403 em POST)
+                    // Liberar preflight OPTIONS para todas as rotas (CORS)
                     .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
+                    
+                    // Endpoints de teste
+                    .requestMatchers("/api/test/**").permitAll()
+                    
+                    // Endpoints de autenticação (públicos)
+                    .requestMatchers("/api/auth/login").permitAll()
+                    .requestMatchers("/api/auth/register").permitAll()
+                    .requestMatchers("/api/auth/refresh").permitAll()
+                    
+                    // Endpoints públicos
+                    .requestMatchers("/api/health").permitAll()
+                    .requestMatchers("/api/providers").permitAll()
+                    .requestMatchers("/api/providers/check-url").permitAll()
+                    
+                    // Swagger/OpenAPI
+                    .requestMatchers("/api-docs/**").permitAll()
+                    .requestMatchers("/swagger-ui/**").permitAll()
+                    .requestMatchers("/swagger-ui.html").permitAll()
+                    .requestMatchers("/v3/api-docs/**").permitAll()
+                    
+                    // Actuator (health checks, metrics)
+                    .requestMatchers("/actuator/**").permitAll()
+                    
                     // Todos os outros endpoints requerem autenticação
                     .anyRequest().authenticated()
             }
@@ -70,10 +74,11 @@ class SecurityConfig(
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
         val configuration = CorsConfiguration().apply {
-            allowedOrigins = listOf("*")
+            allowedOriginPatterns = listOf("*")
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("*")
             exposedHeaders = listOf("Authorization", "Content-Type")
+            allowCredentials = true
             maxAge = 3600L
         }
         
