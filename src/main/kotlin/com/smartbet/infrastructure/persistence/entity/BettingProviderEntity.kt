@@ -2,7 +2,6 @@ package com.smartbet.infrastructure.persistence.entity
 
 import com.smartbet.domain.entity.BettingProvider
 import jakarta.persistence.*
-import java.time.Instant
 
 @Entity
 @Table(name = "betting_providers")
@@ -30,10 +29,10 @@ class BettingProviderEntity(
     var logoUrl: String? = null,
     
     @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: Instant = Instant.now(),
+    val createdAt: Long = System.currentTimeMillis(),
     
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant = Instant.now()
+    var updatedAt: Long = System.currentTimeMillis()
 ) {
     fun toDomain(): BettingProvider = BettingProvider(
         id = id,
@@ -63,6 +62,6 @@ class BettingProviderEntity(
     
     @PreUpdate
     fun preUpdate() {
-        updatedAt = Instant.now()
+        updatedAt = System.currentTimeMillis()
     }
 }

@@ -5,7 +5,6 @@ import com.smartbet.domain.enum.BetType
 import com.smartbet.domain.enum.FinancialStatus
 import com.smartbet.domain.enum.TicketStatus
 import java.math.BigDecimal
-import java.time.Instant
 
 /**
  * Interface Strategy para parsers de casas de apostas.
@@ -68,6 +67,7 @@ interface BettingProviderStrategy {
 
 /**
  * Dados parseados de um bilhete de aposta.
+ * Timestamps são em milissegundos (epoch).
  */
 data class ParsedTicketData(
     val externalTicketId: String,
@@ -78,13 +78,14 @@ data class ParsedTicketData(
     val actualPayout: BigDecimal?,
     val ticketStatus: TicketStatus,
     val systemDescription: String? = null,
-    val placedAt: Instant? = null,
-    val settledAt: Instant? = null,
+    val placedAt: Long? = null,
+    val settledAt: Long? = null,
     val selections: List<ParsedSelectionData>
 )
 
 /**
  * Dados parseados de uma seleção.
+ * Timestamps são em milissegundos (epoch).
  */
 data class ParsedSelectionData(
     val externalSelectionId: String?,
@@ -94,6 +95,6 @@ data class ParsedSelectionData(
     val selection: String,
     val odd: BigDecimal,
     val status: com.smartbet.domain.enum.SelectionStatus,
-    val eventDate: Instant?,
+    val eventDate: Long?,
     val eventResult: String?
 )

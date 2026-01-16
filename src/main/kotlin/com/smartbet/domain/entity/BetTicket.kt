@@ -5,7 +5,6 @@ import com.smartbet.domain.enum.BetType
 import com.smartbet.domain.enum.FinancialStatus
 import com.smartbet.domain.enum.TicketStatus
 import java.math.BigDecimal
-import java.time.Instant
 
 /**
  * Entidade de domínio representando um bilhete de aposta.
@@ -64,17 +63,20 @@ data class BetTicket(
     /** Descrição do sistema (para apostas de sistema) - ex: "2/3" */
     val systemDescription: String? = null,
     
-    /** Data/hora em que a aposta foi realizada */
-    val placedAt: Instant? = null,
+    /** Timestamp em que a aposta foi realizada (milissegundos desde epoch UTC) */
+    val placedAt: Long? = null,
     
-    /** Data/hora em que o bilhete foi resolvido */
-    val settledAt: Instant? = null,
+    /** Timestamp em que o bilhete foi resolvido (milissegundos desde epoch UTC) */
+    val settledAt: Long? = null,
     
     /** Seleções do bilhete */
     val selections: List<BetSelection> = emptyList(),
     
-    val createdAt: Instant = Instant.now(),
-    val updatedAt: Instant = Instant.now()
+    /** Timestamp de criação (milissegundos desde epoch UTC) */
+    val createdAt: Long = System.currentTimeMillis(),
+    
+    /** Timestamp de atualização (milissegundos desde epoch UTC) */
+    val updatedAt: Long = System.currentTimeMillis()
 ) {
     /**
      * Verifica se o bilhete está aberto (aguardando resultado)

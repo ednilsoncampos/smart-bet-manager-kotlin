@@ -3,7 +3,6 @@ package com.smartbet.infrastructure.persistence.entity
 import com.smartbet.domain.entity.Bankroll
 import jakarta.persistence.*
 import java.math.BigDecimal
-import java.time.Instant
 
 @Entity
 @Table(name = "bankrolls")
@@ -43,10 +42,10 @@ class BankrollEntity(
     var isActive: Boolean = true,
     
     @Column(name = "created_at", nullable = false, updatable = false)
-    val createdAt: Instant = Instant.now(),
+    val createdAt: Long = System.currentTimeMillis(),
     
     @Column(name = "updated_at", nullable = false)
-    var updatedAt: Instant = Instant.now()
+    var updatedAt: Long = System.currentTimeMillis()
 ) {
     fun toDomain(): Bankroll = Bankroll(
         id = id,
@@ -84,6 +83,6 @@ class BankrollEntity(
     
     @PreUpdate
     fun preUpdate() {
-        updatedAt = Instant.now()
+        updatedAt = System.currentTimeMillis()
     }
 }

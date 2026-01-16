@@ -13,7 +13,6 @@ import java.math.RoundingMode
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.temporal.ChronoUnit
 
 @Service
 class BankrollEvolutionService(
@@ -130,6 +129,13 @@ class BankrollEvolutionService(
     }
     
     /**
+     * Converte timestamp Long (milissegundos) para LocalDate.
+     */
+    private fun Long.toLocalDate(zoneId: ZoneId): LocalDate {
+        return Instant.ofEpochMilli(this).atZone(zoneId).toLocalDate()
+    }
+    
+    /**
      * Calcula a evolução baseada em transações.
      */
     private fun calculateEvolution(
@@ -145,9 +151,7 @@ class BankrollEvolutionService(
 
         // Agrupar por dia
         val byDate = transactions.groupBy { tx ->
-            tx.createdAt
-                .atZone(zoneId)
-                .toLocalDate()
+            tx.createdAt.toLocalDate(zoneId)
         }
 
         var runningBalance = BigDecimal.ZERO
@@ -219,10 +223,8 @@ class BankrollEvolutionService(
         val zoneId = ZoneId.systemDefault()
         val points = mutableListOf<BankrollEvolutionPoint>()
 
-        val byDate = tickets.groupBy {
-            (it.settledAt ?: it.createdAt)
-                .atZone(zoneId)
-                .toLocalDate()
+        val byDate = tickets.groupBy { ticket ->
+            (ticket.settledAt ?: ticket.createdAt).toLocalDate(zoneId)
         }
 
         var totalStaked = BigDecimal.ZERO

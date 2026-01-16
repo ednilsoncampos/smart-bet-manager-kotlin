@@ -2,7 +2,6 @@ package com.smartbet.domain.entity
 
 import com.smartbet.domain.enum.TransactionType
 import java.math.BigDecimal
-import java.time.Instant
 
 /**
  * Entidade de domínio representando uma transação na banca.
@@ -28,5 +27,6 @@ data class BankrollTransaction(
     /** Descrição da transação */
     val description: String? = null,
     
-    val createdAt: Instant = Instant.now()
+    /** Timestamp de criação (milissegundos desde epoch UTC) */
+    val createdAt: Long = System.currentTimeMillis()
 )

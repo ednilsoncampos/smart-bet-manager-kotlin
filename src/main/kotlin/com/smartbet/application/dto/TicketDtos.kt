@@ -4,7 +4,6 @@ import com.smartbet.domain.entity.BetSelection
 import com.smartbet.domain.entity.BetTicket
 import com.smartbet.domain.enum.*
 import java.math.BigDecimal
-import java.time.Instant
 
 // ============================================
 // Request DTOs
@@ -23,7 +22,7 @@ data class CreateManualTicketRequest(
     val totalOdd: BigDecimal,
     val potentialPayout: BigDecimal? = null,
     val systemDescription: String? = null,
-    val placedAt: Instant? = null,
+    val placedAt: Long? = null,
     val selections: List<CreateSelectionRequest>
 )
 
@@ -33,7 +32,7 @@ data class CreateSelectionRequest(
     val marketType: String? = null,
     val selection: String,
     val odd: BigDecimal,
-    val eventDate: Instant? = null
+    val eventDate: Long? = null
 )
 
 data class UpdateTicketStatusRequest(
@@ -72,11 +71,11 @@ data class TicketResponse(
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
     val systemDescription: String?,
-    val placedAt: Instant?,
-    val settledAt: Instant?,
+    val placedAt: Long?,
+    val settledAt: Long?,
     val selections: List<SelectionResponse>,
-    val createdAt: Instant,
-    val updatedAt: Instant
+    val createdAt: Long,
+    val updatedAt: Long
 ) {
     companion object {
         fun fromDomain(ticket: BetTicket, providerName: String? = null): TicketResponse {
@@ -116,7 +115,7 @@ data class SelectionResponse(
     val selection: String,
     val odd: BigDecimal,
     val status: SelectionStatus,
-    val eventDate: Instant?,
+    val eventDate: Long?,
     val eventResult: String?
 ) {
     companion object {

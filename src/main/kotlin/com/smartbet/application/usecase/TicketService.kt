@@ -18,7 +18,6 @@ import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Instant
 
 @Service
 class TicketService(
@@ -132,6 +131,8 @@ class TicketService(
         val potentialPayout = request.potentialPayout 
             ?: (request.stake * request.totalOdd)
         
+        val now = System.currentTimeMillis()
+        
         val ticketEntity = BetTicketEntity(
             userId = userId,
             providerId = provider.id!!,
@@ -143,7 +144,7 @@ class TicketService(
             ticketStatus = TicketStatus.OPEN,
             financialStatus = FinancialStatus.PENDING,
             systemDescription = request.systemDescription,
-            placedAt = request.placedAt ?: Instant.now()
+            placedAt = request.placedAt ?: now
         )
         
         val savedTicket = ticketRepository.save(ticketEntity)
@@ -241,7 +242,7 @@ class TicketService(
         request.ticketStatus?.let { 
             ticket.ticketStatus = it
             if (it != TicketStatus.OPEN) {
-                ticket.settledAt = Instant.now()
+                ticket.settledAt = System.currentTimeMillis()
             }
         }
         

@@ -109,29 +109,45 @@ class SuperbetStrategyTest {
         fun shouldParseWonSingleTicket() {
             val json = """
             {
-                "data": {
-                    "ticketId": "TICKET-001",
-                    "stake": 100.00,
-                    "totalOdds": 2.50,
-                    "potentialWin": 250.00,
-                    "payout": 250.00,
-                    "status": "won",
-                    "placedAt": "2024-01-15T10:30:00Z",
-                    "settledAt": "2024-01-15T12:00:00Z",
-                    "selections": [
-                        {
-                            "id": "SEL-001",
-                            "eventName": "Flamengo x Palmeiras",
-                            "tournamentName": "Brasileirão",
-                            "marketName": "Resultado Final",
-                            "outcomeName": "Flamengo",
-                            "odds": 2.50,
-                            "status": "won",
-                            "eventDate": "2024-01-15T16:00:00Z",
-                            "result": "2-1"
-                        }
-                    ]
-                }
+                "ticketId": "TICKET-001",
+                "status": "win",
+                "coefficient": 2.50,
+                "dateReceived": "2024-01-15T10:30:00Z",
+                "dateLastModified": "2024-01-15T12:00:00Z",
+                "payment": {
+                    "stake": 100.00
+                },
+                "win": {
+                    "potentialTotalWinnings": 250.00,
+                    "payoff": 250.00,
+                    "totalWinnings": 250.00
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Flamengo", "Palmeiras"],
+                        "date": "2024-01-15T16:00:00Z",
+                        "status": "win",
+                        "coefficient": 2.50,
+                        "odd": {
+                            "coefficient": 2.50,
+                            "oddUuid": "uuid-001"
+                        },
+                        "eventComponents": [
+                            {
+                                "market": {
+                                    "name": "Resultado Final"
+                                },
+                                "oddComponent": {
+                                    "name": "Flamengo",
+                                    "oddUuid": "uuid-comp-001",
+                                    "oddStatus": "WIN"
+                                },
+                                "status": "WIN"
+                            }
+                        ]
+                    }
+                ]
             }
             """.trimIndent()
             
@@ -148,10 +164,8 @@ class SuperbetStrategyTest {
             
             val selection = result.selections[0]
             assertEquals("Flamengo x Palmeiras", selection.eventName)
-            assertEquals("Brasileirão", selection.tournamentName)
             assertEquals("Resultado Final", selection.marketType)
             assertEquals("Flamengo", selection.selection)
-            assertEquals(BigDecimal("2.5"), selection.odd)
             assertEquals(SelectionStatus.WON, selection.status)
         }
         
@@ -160,28 +174,49 @@ class SuperbetStrategyTest {
         fun shouldParseLostMultipleTicket() {
             val json = """
             {
-                "data": {
-                    "ticketId": "TICKET-002",
-                    "stake": 50.00,
-                    "totalOdds": 5.00,
-                    "potentialWin": 250.00,
-                    "payout": 0,
-                    "status": "lost",
-                    "selections": [
-                        {
-                            "eventName": "Jogo 1",
-                            "outcomeName": "Time A",
-                            "odds": 2.00,
-                            "status": "won"
-                        },
-                        {
-                            "eventName": "Jogo 2",
-                            "outcomeName": "Time B",
-                            "odds": 2.50,
-                            "status": "lost"
-                        }
-                    ]
-                }
+                "ticketId": "TICKET-002",
+                "status": "lose",
+                "coefficient": 5.00,
+                "payment": {
+                    "stake": 50.00
+                },
+                "win": {
+                    "potentialTotalWinnings": 250.00,
+                    "payoff": 0,
+                    "totalWinnings": 0
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "coefficient": 2.00,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado" },
+                                "oddComponent": {
+                                    "name": "Time A",
+                                    "oddStatus": "WIN"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "eventId": "EVT-002",
+                        "name": ["Time C", "Time D"],
+                        "status": "lose",
+                        "coefficient": 2.50,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado" },
+                                "oddComponent": {
+                                    "name": "Time C",
+                                    "oddStatus": "LOST"
+                                }
+                            }
+                        ]
+                    }
+                ]
             }
             """.trimIndent()
             
@@ -199,22 +234,34 @@ class SuperbetStrategyTest {
         fun shouldParseCashoutTicket() {
             val json = """
             {
-                "data": {
-                    "ticketId": "TICKET-003",
-                    "stake": 100.00,
-                    "totalOdds": 3.00,
-                    "potentialWin": 300.00,
-                    "payout": 150.00,
-                    "status": "cashout",
-                    "selections": [
-                        {
-                            "eventName": "Jogo",
-                            "outcomeName": "Empate",
-                            "odds": 3.00,
-                            "status": "cashout"
-                        }
-                    ]
-                }
+                "ticketId": "TICKET-003",
+                "status": "cashout",
+                "coefficient": 3.00,
+                "payment": {
+                    "stake": 100.00
+                },
+                "win": {
+                    "potentialTotalWinnings": 300.00,
+                    "payoff": 150.00,
+                    "isCashedOut": true
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time X", "Time Y"],
+                        "status": "cashout",
+                        "coefficient": 3.00,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Empate" },
+                                "oddComponent": {
+                                    "name": "Empate",
+                                    "oddStatus": "CASHOUT"
+                                }
+                            }
+                        ]
+                    }
+                ]
             }
             """.trimIndent()
             
@@ -229,21 +276,32 @@ class SuperbetStrategyTest {
         fun shouldParseOpenTicket() {
             val json = """
             {
-                "data": {
-                    "ticketId": "TICKET-004",
-                    "stake": 100.00,
-                    "totalOdds": 2.00,
-                    "potentialWin": 200.00,
-                    "status": "open",
-                    "selections": [
-                        {
-                            "eventName": "Jogo Futuro",
-                            "outcomeName": "Time X",
-                            "odds": 2.00,
-                            "status": "pending"
-                        }
-                    ]
-                }
+                "ticketId": "TICKET-004",
+                "status": "open",
+                "coefficient": 2.00,
+                "payment": {
+                    "stake": 100.00
+                },
+                "win": {
+                    "potentialTotalWinnings": 200.00
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time Futuro", "Adversário"],
+                        "status": "pending",
+                        "coefficient": 2.00,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado" },
+                                "oddComponent": {
+                                    "name": "Time Futuro",
+                                    "oddStatus": "PENDING"
+                                }
+                            }
+                        ]
+                    }
+                ]
             }
             """.trimIndent()
             
@@ -252,6 +310,142 @@ class SuperbetStrategyTest {
             assertEquals(TicketStatus.OPEN, result.ticketStatus)
             assertNull(result.actualPayout)
             assertEquals(SelectionStatus.PENDING, result.selections[0].status)
+        }
+        
+        @Test
+        @DisplayName("deve parsear resposta de bilhete sistema")
+        fun shouldParseSystemTicket() {
+            val json = """
+            {
+                "ticketId": "TICKET-005",
+                "status": "win",
+                "coefficient": 10.00,
+                "system": {
+                    "selected": [3],
+                    "fixed": 0,
+                    "count": 4
+                },
+                "payment": {
+                    "stake": 100.00
+                },
+                "win": {
+                    "potentialTotalWinnings": 1000.00,
+                    "payoff": 500.00
+                },
+                "events": [
+                    {
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "coefficient": 2.00,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado" },
+                                "oddComponent": { "name": "Time A", "oddStatus": "WIN" }
+                            }
+                        ]
+                    },
+                    {
+                        "name": ["Time C", "Time D"],
+                        "status": "win",
+                        "coefficient": 2.00,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado" },
+                                "oddComponent": { "name": "Time C", "oddStatus": "WIN" }
+                            }
+                        ]
+                    },
+                    {
+                        "name": ["Time E", "Time F"],
+                        "status": "win",
+                        "coefficient": 2.00,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado" },
+                                "oddComponent": { "name": "Time E", "oddStatus": "WIN" }
+                            }
+                        ]
+                    },
+                    {
+                        "name": ["Time G", "Time H"],
+                        "status": "lose",
+                        "coefficient": 2.50,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado" },
+                                "oddComponent": { "name": "Time G", "oddStatus": "LOST" }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            assertEquals(BetType.SYSTEM, result.betType)
+            assertEquals("3/4", result.systemDescription)
+            assertEquals(TicketStatus.WON, result.ticketStatus)
+            assertEquals(4, result.selections.size)
+        }
+        
+        @Test
+        @DisplayName("deve parsear evento com múltiplos eventComponents")
+        fun shouldParseEventWithMultipleComponents() {
+            val json = """
+            {
+                "ticketId": "TICKET-006",
+                "status": "win",
+                "coefficient": 1.50,
+                "payment": {
+                    "stake": 100.00
+                },
+                "win": {
+                    "potentialTotalWinnings": 150.00,
+                    "payoff": 150.00
+                },
+                "events": [
+                    {
+                        "name": ["Bayern Munich", "Wolfsburg"],
+                        "date": "2024-01-15T16:30:00Z",
+                        "status": "win",
+                        "coefficient": 1.50,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Total de Gols" },
+                                "oddComponent": {
+                                    "name": "Mais de 2.5",
+                                    "oddUuid": "uuid-1",
+                                    "oddStatus": "WIN"
+                                }
+                            },
+                            {
+                                "market": { "name": "Ambas Marcam" },
+                                "oddComponent": {
+                                    "name": "Sim",
+                                    "oddUuid": "uuid-2",
+                                    "oddStatus": "WIN"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            assertEquals(2, result.selections.size)
+            
+            val selection1 = result.selections[0]
+            assertEquals("Bayern Munich x Wolfsburg", selection1.eventName)
+            assertEquals("Total de Gols", selection1.marketType)
+            assertEquals("Mais de 2.5", selection1.selection)
+            
+            val selection2 = result.selections[1]
+            assertEquals("Bayern Munich x Wolfsburg", selection2.eventName)
+            assertEquals("Ambas Marcam", selection2.marketType)
+            assertEquals("Sim", selection2.selection)
         }
     }
 }

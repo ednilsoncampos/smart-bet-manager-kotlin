@@ -3,7 +3,6 @@ package com.smartbet.infrastructure.persistence.entity
 import com.smartbet.domain.entity.User
 import com.smartbet.domain.entity.UserRole
 import jakarta.persistence.*
-import java.time.Instant
 
 @Entity
 @Table(name = "users")
@@ -48,8 +47,8 @@ class UserEntity(
         avatarUrl = avatarUrl,
         role = role,
         isActive = isActive,
-        createdAt = Instant.ofEpochMilli(createdAt),
-        updatedAt = Instant.ofEpochMilli(updatedAt)
+        createdAt = createdAt,
+        updatedAt = updatedAt
     )
     
     companion object {
@@ -61,8 +60,8 @@ class UserEntity(
             avatarUrl = user.avatarUrl,
             role = user.role,
             isActive = user.isActive,
-            createdAt = user.createdAt.toEpochMilli(),
-            updatedAt = user.updatedAt.toEpochMilli()
+            createdAt = user.createdAt,
+            updatedAt = user.updatedAt
         )
     }
     

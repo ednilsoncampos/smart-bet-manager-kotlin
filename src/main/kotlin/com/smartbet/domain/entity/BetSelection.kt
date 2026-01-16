@@ -2,7 +2,6 @@ package com.smartbet.domain.entity
 
 import com.smartbet.domain.enum.SelectionStatus
 import java.math.BigDecimal
-import java.time.Instant
 
 /**
  * Entidade de domínio representando uma seleção individual dentro de um bilhete.
@@ -36,12 +35,15 @@ data class BetSelection(
     /** Status da seleção */
     val status: SelectionStatus = SelectionStatus.PENDING,
     
-    /** Data/hora do evento */
-    val eventDate: Instant? = null,
+    /** Timestamp do evento (milissegundos desde epoch UTC) */
+    val eventDate: Long? = null,
     
     /** Resultado do evento (se disponível) */
     val eventResult: String? = null,
     
-    val createdAt: Instant = Instant.now(),
-    val updatedAt: Instant = Instant.now()
+    /** Timestamp de criação (milissegundos desde epoch UTC) */
+    val createdAt: Long = System.currentTimeMillis(),
+    
+    /** Timestamp de atualização (milissegundos desde epoch UTC) */
+    val updatedAt: Long = System.currentTimeMillis()
 )
