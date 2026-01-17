@@ -1,3 +1,9 @@
+# Smart Bet Manager - Configurações Base
+# As configurações específicas de cada ambiente estão em:
+# - application-dev.yml (desenvolvimento local)
+# - application-staging.yml (homologação)
+# - application-prod.yml (produção)
+
 spring:
   application:
     name: smart-bet-manager
@@ -8,18 +14,16 @@ spring:
     password: ${DB_PASSWORD:smartbet}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 5
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: ${DB_MIN_IDLE:5}
       idle-timeout: 300000
       connection-timeout: 20000
   
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: false
     properties:
       hibernate:
-        format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
     open-in-view: false
   
@@ -43,28 +47,10 @@ server:
 # JWT Configuration
 jwt:
   secret: ${JWT_SECRET:smartbet-secret-key-must-be-at-least-256-bits-long-for-security}
-  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}   # 1 hora em ms
-  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000} # 7 dias em ms
+  access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
+  refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
 
-# Logging
-logging:
-  level:
-    root: INFO
-    com.smartbet: DEBUG
-    org.springframework.web: INFO
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-
-# OpenAPI
-springdoc:
-  api-docs:
-    path: /api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-    operationsSorter: method
-
-# Actuator & Observability
+# Actuator & Observability (compartilhado)
 management:
   endpoints:
     web:
@@ -86,28 +72,3 @@ management:
         enabled: true
     tags:
       application: ${spring.application.name}
-
----
-spring:
-  config:
-    activate:
-      on-profile: test
-  datasource:
-    url: jdbc:postgresql://localhost:5432/smartbet_test
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
-
----
-spring:
-  config:
-    activate:
-      on-profile: prod
-  jpa:
-    show-sql: false
-  
-logging:
-  level:
-    root: WARN
-    com.smartbet: INFO
-    org.springframework.security: WARN

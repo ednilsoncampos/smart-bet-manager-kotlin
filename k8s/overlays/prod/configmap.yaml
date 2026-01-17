@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: smart-bet-config
+  labels:
+    app: smart-bet-backend
+    environment: prod
+data:
+  # Spring Profile
+  spring-profile: "prod"
+  
+  # Database configuration (DigitalOcean Managed Database)
+  # IMPORTANTE: Atualize estes valores com seu banco de dados
+  db-host: "your-prod-postgres-host.db.ondigitalocean.com"
+  db-port: "25060"
+  db-name: "smartbet"
+  
+  # Logging
+  log-level: "WARN"
