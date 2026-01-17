@@ -9,11 +9,12 @@ data:
   # Spring Profile
   spring-profile: "staging"
   
-  # Database configuration (DigitalOcean Managed Database)
-  # IMPORTANTE: Atualize estes valores com seu banco de dados
-  db-host: "your-staging-postgres-host.db.ondigitalocean.com"
+  # Database configuration (DigitalOcean Managed Database - VPC Network)
+  # IMPORTANTE: Atualize estes valores com seu banco de dados de staging
+  db-host: "private-smartbet-postgres-staging-do-user-XXXXX.db.ondigitalocean.com"
   db-port: "25060"
-  db-name: "smartbet_staging"
+  db-name: "defaultdb"
+  db-sslmode: "require"
   
   # Logging
   log-level: "INFO"

@@ -63,6 +63,11 @@ spec:
             secretKeyRef:
               name: smart-bet-secret
               key: db-password
+        - name: DB_SSLMODE
+          valueFrom:
+            configMapKeyRef:
+              name: smart-bet-config
+              key: db-sslmode
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
