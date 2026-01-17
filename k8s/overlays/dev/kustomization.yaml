@@ -13,6 +13,7 @@ commonLabels:
   environment: dev
 
 patches:
+  # Recursos reduzidos para ambiente de desenvolvimento
   - patch: |-
       - op: replace
         path: /spec/replicas
@@ -33,6 +34,7 @@ patches:
       kind: Deployment
       name: smart-bet-backend
 
+  # Domínio do ambiente de desenvolvimento
   - patch: |-
       - op: replace
         path: /spec/tls/0/hosts/0
