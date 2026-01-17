@@ -39,7 +39,7 @@ CREATE INDEX idx_betting_providers_slug ON betting_providers(slug);
 
 -- Insert default providers
 INSERT INTO betting_providers (slug, name, is_active, api_url_template, website_url) VALUES
-    ('superbet', 'Superbet', TRUE, 'https://superbet.bet.br/api/content/betslip/{CODE}', 'https://superbet.bet.br'),
+    ('superbet', 'Superbet', TRUE, 'https://prod-superbet-betting.freetls.fastly.net/tickets/presentation-api/v3/SB_BR/ticket/{CODE}', 'https://superbet.bet.br'),
     ('betano', 'Betano', TRUE, 'https://www.betano.bet.br/api/betslip/v3/getBetslipById/{CODE}', 'https://www.betano.bet.br');
 
 -- ============================================

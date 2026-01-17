@@ -172,6 +172,7 @@ class TicketService(
     /**
      * Lista bilhetes do usuário com filtros.
      */
+    @Transactional(readOnly = true)
     fun listTickets(userId: Long, request: ListTicketsRequest): PagedResponse<TicketResponse> {
         val pageable = PageRequest.of(
             request.page, 
@@ -208,6 +209,7 @@ class TicketService(
     /**
      * Busca um bilhete por ID.
      */
+    @Transactional(readOnly = true)
     fun getById(userId: Long, ticketId: Long): TicketResponse {
         val ticket = ticketRepository.findById(ticketId)
             .orElseThrow { IllegalArgumentException("Bilhete não encontrado: $ticketId") }
