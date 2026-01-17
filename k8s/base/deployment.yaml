@@ -6,6 +6,12 @@ metadata:
     app: smart-bet-backend
 spec:
   replicas: 1
+  # Estratégia de rolling update para zero downtime
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: smart-bet-backend
@@ -18,6 +24,8 @@ spec:
         prometheus.io/port: "8080"
         prometheus.io/path: "/actuator/prometheus"
     spec:
+      # Tempo para graceful shutdown
+      terminationGracePeriodSeconds: 30
       containers:
       - name: smart-bet-backend
         image: ghcr.io/ednilsoncampos/smart-bet-manager-kotlin:latest
@@ -55,6 +63,11 @@ spec:
             secretKeyRef:
               name: smart-bet-secret
               key: db-password
+        - name: DB_SSLMODE
+          valueFrom:
+            configMapKeyRef:
+              name: smart-bet-config
+              key: db-sslmode
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
@@ -67,29 +80,43 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "500m"
-        livenessProbe:
-          httpGet:
-            path: /actuator/health/liveness
-            port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /actuator/health/readiness
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
+        # Startup probe: aguarda app iniciar (Spring Boot pode demorar)
+        # Permite até 180s (30 * 6s) para inicialização
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 5
-          timeoutSeconds: 3
+          initialDelaySeconds: 15
+          periodSeconds: 6
+          timeoutSeconds: 5
           failureThreshold: 30
+          successThreshold: 1
+        # Readiness probe: verifica se pode receber tráfego
+        # Só roda após startup probe passar
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+          successThreshold: 1
+        # Liveness probe: verifica se app está vivo
+        # Reinicia container se falhar
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+        # Lifecycle hooks para graceful shutdown
+        lifecycle:
+          preStop:
+            exec:
+              command: ["sh", "-c", "sleep 5"]
       imagePullSecrets:
       - name: ghcr-secret

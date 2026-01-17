@@ -9,11 +9,12 @@ data:
   # Spring Profile
   spring-profile: "prod"
   
-  # Database configuration (DigitalOcean Managed Database)
-  # IMPORTANTE: Atualize estes valores com seu banco de dados
-  db-host: "your-prod-postgres-host.db.ondigitalocean.com"
+  # Database configuration (DigitalOcean Managed Database - VPC Network)
+  # IMPORTANTE: Atualize estes valores com seu banco de dados de produção
+  db-host: "smartbet-postgres-dev-do-user-32074130-0.f.db.ondigitalocean.com"
   db-port: "25060"
-  db-name: "smartbet"
+  db-name: "smartbet_dev"
+  db-sslmode: "require"
   
   # Logging
   log-level: "WARN"
