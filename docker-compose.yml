@@ -1,3 +1,6 @@
+# Smart Bet Manager - Docker Compose (Desenvolvimento Local)
+# Usa perfil: dev
+
 version: '3.8'
 
 services:
@@ -24,7 +27,7 @@ services:
       - smartbet-network
 
   # ============================================
-  # Smart Bet Manager API
+  # Smart Bet Manager API (DEV)
   # ============================================
   api:
     build:
@@ -32,11 +35,19 @@ services:
       dockerfile: Dockerfile
     container_name: smartbet-api
     environment:
-      SPRING_PROFILES_ACTIVE: docker
-      DATABASE_URL: jdbc:postgresql://postgres:5432/smartbet
-      DATABASE_USERNAME: smartbet
-      DATABASE_PASSWORD: smartbet123
+      # Perfil de ambiente
+      SPRING_PROFILES_ACTIVE: dev
+      # Database
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: smartbet
+      DB_USER: smartbet
+      DB_PASSWORD: smartbet123
+      # Server
       SERVER_PORT: 8080
+      # JWT
+      JWT_SECRET: dev-secret-key-must-be-at-least-256-bits-long-for-security
+      # Debug
       JAVA_TOOL_OPTIONS: >
         -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
     ports:

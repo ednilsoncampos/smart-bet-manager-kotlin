@@ -5,7 +5,7 @@ metadata:
   labels:
     app: smart-bet-backend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: smart-bet-backend
@@ -26,7 +26,10 @@ spec:
           name: http
         env:
         - name: SPRING_PROFILES_ACTIVE
-          value: "docker"
+          valueFrom:
+            configMapKeyRef:
+              name: smart-bet-config
+              key: spring-profile
         - name: DB_HOST
           valueFrom:
             configMapKeyRef:
@@ -63,7 +66,7 @@ spec:
             cpu: "250m"
           limits:
             memory: "1Gi"
-            cpu: "1000m"
+            cpu: "500m"
         livenessProbe:
           httpGet:
             path: /actuator/health/liveness

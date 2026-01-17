@@ -1,0 +1,31 @@
+# Smart Bet Manager - Perfil PROD (Produção)
+# Ativar com: SPRING_PROFILES_ACTIVE=prod
+
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:25060}/${DB_NAME:smartbet}?sslmode=require
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 10
+  
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+# Logging mínimo para produção
+logging:
+  level:
+    root: WARN
+    com.smartbet: INFO
+    org.springframework.web: WARN
+    org.springframework.security: WARN
+    org.hibernate.SQL: ERROR
+
+# OpenAPI/Swagger DESABILITADO em produção
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

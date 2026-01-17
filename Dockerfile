@@ -1,5 +1,6 @@
 # Smart Bet Manager - Dockerfile
 # Multi-stage build for optimized production image
+# Suporta perfis: dev, staging, prod
 
 # ============================================
 # Stage 1: Build
@@ -47,8 +48,10 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/health || exit 1
 
-# JVM options for containers
+# Environment variables
+# SPRING_PROFILES_ACTIVE: dev | staging | prod (default: prod)
+ENV SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-prod}
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:InitialRAMPercentage=50.0"
 
-# Run the application
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# Run the application with profile
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dspring.profiles.active=$SPRING_PROFILES_ACTIVE -jar app.jar"]
