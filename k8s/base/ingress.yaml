@@ -12,10 +12,10 @@ metadata:
 spec:
   tls:
   - hosts:
-    - api.smartbet.com
+    - smartbet.api.br
     secretName: smart-bet-tls
   rules:
-  - host: api.smartbet.com
+  - host: smartbet.api.br
     http:
       paths:
       - path: /
