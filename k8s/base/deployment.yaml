@@ -10,8 +10,8 @@ spec:
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxUnavailable: 1
-      maxSurge: 0
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app: smart-bet-backend
@@ -86,7 +86,7 @@ spec:
           httpGet:
             path: /actuator/health
             port: 8080
-          initialDelaySeconds: 15
+          initialDelaySeconds: 30
           periodSeconds: 6
           timeoutSeconds: 5
           failureThreshold: 30
@@ -108,11 +108,10 @@ spec:
           httpGet:
             path: /actuator/health/liveness
             port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 15
+          initialDelaySeconds: 20
+          periodSeconds: 20
           timeoutSeconds: 5
           failureThreshold: 3
-          successThreshold: 1
         # Lifecycle hooks para graceful shutdown
         lifecycle:
           preStop:
