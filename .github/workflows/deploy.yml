@@ -80,6 +80,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [set-environment, build-and-push]
     environment: ${{ needs.set-environment.outputs.environment }}
+    if: ${{ needs.set-environment.outputs.environment != 'dev' }}  # Desabilita o deploy no perfil 'dev'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
