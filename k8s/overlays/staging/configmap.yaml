@@ -13,7 +13,7 @@ data:
   # IMPORTANTE: Atualize estes valores com seu banco de dados de staging
   db-host: "smartbet-postgres-dev-do-user-32074130-0.f.db.ondigitalocean.com"
   db-port: "25060"
-  db-name: "smartbet_dev"
+  db-name: "smartbet_stg"
   db-sslmode: "require"
   
   # Logging
