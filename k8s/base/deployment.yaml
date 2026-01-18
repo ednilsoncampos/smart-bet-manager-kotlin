@@ -6,12 +6,12 @@ metadata:
     app: smart-bet-backend
 spec:
   replicas: 1
-  # Estratégia de rolling update para zero downtime
+  # Estratégia de rolling update para zero downtime TODO: Rever estrátegia quando precisar de mais Pods em produção
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxUnavailable: 0
-      maxSurge: 1
+    maxUnavailable: 1
+    maxSurge: 0
   selector:
     matchLabels:
       app: smart-bet-backend
