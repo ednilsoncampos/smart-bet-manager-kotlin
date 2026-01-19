@@ -36,10 +36,10 @@ patches:
   - patch: |-
       - op: replace
         path: /spec/tls/0/hosts/0
-        value: api.smartbet.com
+        value: smartbet.api.br
       - op: replace
         path: /spec/rules/0/host
-        value: api.smartbet.com
+        value: smartbet.api.br
     target:
       kind: Ingress
       name: smart-bet-ingress
