@@ -94,6 +94,35 @@ interface BetTicketRepository : JpaRepository<BetTicketEntity, Long> {
         AND t.ticketStatus != 'OPEN'
     """)
     fun countSettledByUserId(@Param("userId") userId: Long): Long
+    
+    /**
+     * Busca bilhetes em aberto de um usuário que foram importados (têm sourceUrl).
+     * Usado para refresh de bilhetes no login.
+     */
+    @Query("""
+        SELECT t FROM BetTicketEntity t 
+        WHERE t.userId = :userId 
+        AND t.ticketStatus = 'OPEN'
+        AND t.sourceUrl IS NOT NULL
+    """)
+    fun findOpenTicketsByUserId(@Param("userId") userId: Long): List<BetTicketEntity>
+    
+    /**
+     * Busca todos os bilhetes em aberto que foram importados (têm sourceUrl).
+     * Usado pelo job agendado.
+     */
+    @Query("""
+        SELECT t FROM BetTicketEntity t 
+        WHERE t.ticketStatus = 'OPEN'
+        AND t.sourceUrl IS NOT NULL
+        ORDER BY t.userId, t.providerId
+    """)
+    fun findAllOpenTicketsWithSourceUrl(): List<BetTicketEntity>
+    
+    /**
+     * Conta bilhetes em aberto de um usuário.
+     */
+    fun countByUserIdAndTicketStatus(userId: Long, ticketStatus: TicketStatus): Long
 }
 
 @Repository

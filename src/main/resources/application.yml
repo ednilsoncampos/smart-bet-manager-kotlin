@@ -50,6 +50,13 @@ jwt:
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:3600000}
   refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
 
+# Job Configuration
+app:
+  jobs:
+    ticket-refresh:
+      rate: ${TICKET_REFRESH_RATE:1800000}       # 30 minutos em ms
+      initial-delay: ${TICKET_REFRESH_DELAY:300000}  # 5 minutos em ms
+
 # Actuator & Observability (compartilhado)
 management:
   endpoints:

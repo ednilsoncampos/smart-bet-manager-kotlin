@@ -2,6 +2,7 @@ package com.smartbet.presentation.controller
 
 import com.smartbet.application.dto.*
 import com.smartbet.application.usecase.TicketService
+import com.smartbet.application.usecase.TicketRefreshService
 import com.smartbet.domain.enum.FinancialStatus
 import com.smartbet.domain.enum.TicketStatus
 import io.swagger.v3.oas.annotations.Operation
@@ -16,7 +17,8 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/tickets")
 @Tag(name = "Tickets", description = "Gerenciamento de bilhetes de apostas")
 class TicketController(
-    private val ticketService: TicketService
+    private val ticketService: TicketService,
+    private val ticketRefreshService: TicketRefreshService
 ) {
     
     @PostMapping("/import")
@@ -90,5 +92,35 @@ class TicketController(
     ): ResponseEntity<Void> {
         ticketService.delete(userId, id)
         return ResponseEntity.noContent().build()
+    }
+    
+    @PostMapping("/refresh-open")
+    @Operation(
+        summary = "Atualizar bilhetes em aberto", 
+        description = "Dispara atualização assíncrona dos bilhetes em aberto do usuário. " +
+            "Retorna imediatamente com status 202 Accepted enquanto o processamento ocorre em background. " +
+            "Ideal para chamar no login do app."
+    )
+    fun refreshOpenTickets(
+        @AuthenticationPrincipal userId: Long
+    ): ResponseEntity<RefreshOpenTicketsResponse> {
+        val ticketsToRefresh = ticketService.countOpenTicketsToRefresh(userId)
+        
+        if (ticketsToRefresh == 0) {
+            return ResponseEntity.ok(RefreshOpenTicketsResponse(
+                message = "Nenhum bilhete em aberto para atualizar",
+                ticketsToRefresh = 0,
+                status = RefreshStatus.COMPLETED
+            ))
+        }
+        
+        // Dispara processamento assíncrono
+        ticketRefreshService.refreshOpenTicketsAsync(userId)
+        
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(RefreshOpenTicketsResponse(
+            message = "Atualizando $ticketsToRefresh bilhete(s) em background",
+            ticketsToRefresh = ticketsToRefresh,
+            status = RefreshStatus.PROCESSING
+        ))
     }
 }

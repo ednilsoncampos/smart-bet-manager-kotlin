@@ -341,3 +341,125 @@ class TicketServiceTest {
         }
     }
 }
+
+    @Nested
+    @DisplayName("countOpenTicketsToRefresh()")
+    inner class CountOpenTicketsToRefreshTests {
+        
+        @Test
+        @DisplayName("deve retornar quantidade de bilhetes em aberto")
+        fun shouldReturnCountOfOpenTickets() {
+            // Arrange
+            val openTickets = listOf(
+                BetTicketEntity(
+                    id = 1L,
+                    userId = userId,
+                    providerId = providerId,
+                    stake = BigDecimal("100.00"),
+                    totalOdd = BigDecimal("2.00"),
+                    ticketStatus = TicketStatus.OPEN,
+                    sourceUrl = "https://superbet.com/ticket/123"
+                ),
+                BetTicketEntity(
+                    id = 2L,
+                    userId = userId,
+                    providerId = providerId,
+                    stake = BigDecimal("50.00"),
+                    totalOdd = BigDecimal("3.00"),
+                    ticketStatus = TicketStatus.OPEN,
+                    sourceUrl = "https://superbet.com/ticket/456"
+                )
+            )
+            
+            every { ticketRepository.findOpenTicketsByUserId(userId) } returns openTickets
+            
+            // Act
+            val result = ticketService.countOpenTicketsToRefresh(userId)
+            
+            // Assert
+            assertEquals(2, result)
+        }
+        
+        @Test
+        @DisplayName("deve retornar zero quando não há bilhetes em aberto")
+        fun shouldReturnZeroWhenNoOpenTickets() {
+            // Arrange
+            every { ticketRepository.findOpenTicketsByUserId(userId) } returns emptyList()
+            
+            // Act
+            val result = ticketService.countOpenTicketsToRefresh(userId)
+            
+            // Assert
+            assertEquals(0, result)
+        }
+    }
+    
+    @Nested
+    @DisplayName("refreshOpenTickets()")
+    inner class RefreshOpenTicketsTests {
+        
+        @Test
+        @DisplayName("deve retornar resultado vazio quando não há bilhetes em aberto")
+        fun shouldReturnEmptyResultWhenNoOpenTickets() {
+            // Arrange
+            every { ticketRepository.findOpenTicketsByUserId(userId) } returns emptyList()
+            
+            // Act
+            val result = ticketService.refreshOpenTickets(userId)
+            
+            // Assert
+            assertEquals(0, result.totalProcessed)
+            assertEquals(0, result.updated)
+            assertEquals(0, result.unchanged)
+            assertEquals(0, result.errors)
+        }
+        
+        @Test
+        @DisplayName("deve processar bilhetes em aberto e contar erros")
+        fun shouldProcessOpenTicketsAndCountErrors() {
+            // Arrange
+            val ticketWithoutUrl = BetTicketEntity(
+                id = 1L,
+                userId = userId,
+                providerId = providerId,
+                stake = BigDecimal("100.00"),
+                totalOdd = BigDecimal("2.00"),
+                ticketStatus = TicketStatus.OPEN,
+                sourceUrl = null // Sem URL - vai gerar erro
+            )
+            
+            every { ticketRepository.findOpenTicketsByUserId(userId) } returns listOf(ticketWithoutUrl)
+            
+            // Act
+            val result = ticketService.refreshOpenTickets(userId)
+            
+            // Assert
+            assertEquals(1, result.totalProcessed)
+            assertEquals(0, result.updated)
+            assertEquals(0, result.unchanged)
+            assertEquals(1, result.errors)
+            assertEquals(1, result.errorDetails.size)
+            assertTrue(result.errorDetails[0].errorMessage.contains("sourceUrl"))
+        }
+    }
+    
+    @Nested
+    @DisplayName("refreshAllOpenTickets()")
+    inner class RefreshAllOpenTicketsTests {
+        
+        @Test
+        @DisplayName("deve retornar resultado vazio quando não há bilhetes em aberto")
+        fun shouldReturnEmptyResultWhenNoOpenTickets() {
+            // Arrange
+            every { ticketRepository.findAllOpenTicketsWithSourceUrl() } returns emptyList()
+            
+            // Act
+            val result = ticketService.refreshAllOpenTickets()
+            
+            // Assert
+            assertEquals(0, result.totalProcessed)
+            assertEquals(0, result.updated)
+            assertEquals(0, result.unchanged)
+            assertEquals(0, result.errors)
+        }
+    }

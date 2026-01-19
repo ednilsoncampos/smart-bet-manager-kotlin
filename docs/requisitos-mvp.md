@@ -32,6 +32,7 @@ O Smart Bet Manager é uma aplicação para gerenciamento de apostas esportivas,
 - [x] Visualizar detalhes do bilhete
 - [x] Atualizar status do bilhete
 - [x] Deletar bilhete
+- [x] Reimportar bilhetes em aberto (refresh automático)
 
 ### 4. Casas de Apostas (Providers)
 
@@ -102,6 +103,41 @@ O saldo da banca é calculado com base em:
 - Métricas Prometheus
 - Health probes (liveness/readiness)
 
+### 6. Atualização Automática de Bilhetes
+
+- [x] API assíncrona para refresh de bilhetes em aberto
+- [x] Job agendado a cada 30 minutos
+- [x] Suporte a múltiplos providers
+- [x] Tratamento de erros e retry
+
+#### Fluxo de Atualização
+
+1. **No Login do App:**
+   - App chama `POST /api/tickets/refresh-open`
+   - Backend retorna `202 Accepted` com quantidade de bilhetes
+   - App mostra toast "Atualizando N bilhetes..." por 5-10s
+   - Processamento ocorre em background
+
+2. **Job Agendado (30 min):**
+   - Busca todos os bilhetes OPEN com sourceUrl
+   - Reimporta de cada provider
+   - Atualiza status, payout, ROI
+   - Loga resultado e erros
+
+#### Endpoint
+
+```
+POST /api/tickets/refresh-open
+Authorization: Bearer {token}
+
+Response 202:
+{
+  "message": "Atualizando 5 bilhete(s) em background",
+  "ticketsToRefresh": 5,
+  "status": "PROCESSING"
+}
+```
+
 ## Próximas Funcionalidades (Pós-MVP)
 
 - [ ] Notificações push
@@ -109,4 +145,4 @@ O saldo da banca é calculado com base em:
 - [ ] Relatórios exportáveis (PDF/Excel)
 - [ ] Metas e alertas personalizados
 - [ ] Modo offline no mobile
-- [ ] Sincronização automática de resultados
+- [x] ~~Sincronização automática de resultados~~ (Implementado)
