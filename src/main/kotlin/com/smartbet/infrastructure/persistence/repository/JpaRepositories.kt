@@ -119,10 +119,6 @@ interface BetTicketRepository : JpaRepository<BetTicketEntity, Long> {
     """)
     fun findAllOpenTicketsWithSourceUrl(): List<BetTicketEntity>
     
-    /**
-     * Conta bilhetes em aberto de um usuário.
-     */
-    fun countByUserIdAndTicketStatus(userId: Long, ticketStatus: TicketStatus): Long
 }
 
 @Repository
