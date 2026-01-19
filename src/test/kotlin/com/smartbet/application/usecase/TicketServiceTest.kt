@@ -340,8 +340,7 @@ class TicketServiceTest {
             verify(exactly = 1) { ticketRepository.delete(ticket) }
         }
     }
-}
-
+    
     @Nested
     @DisplayName("countOpenTicketsToRefresh()")
     inner class CountOpenTicketsToRefreshTests {
@@ -463,3 +462,4 @@ class TicketServiceTest {
             assertEquals(0, result.errors)
         }
     }
+}
