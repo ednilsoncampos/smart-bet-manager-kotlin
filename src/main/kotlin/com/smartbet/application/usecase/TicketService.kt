@@ -281,4 +281,202 @@ class TicketService(
         ticketRepository.delete(ticket)
         logger.info("Ticket deleted: {}", ticketId)
     }
+    
+    /**
+     * Conta bilhetes em aberto de um usuário que podem ser atualizados.
+     * Usado para retornar a quantidade antes de iniciar o refresh assíncrono.
+     */
+    fun countOpenTicketsToRefresh(userId: Long): Int {
+        return ticketRepository.findOpenTicketsByUserId(userId).size
+    }
+    
+    /**
+     * Atualiza bilhetes em aberto de um usuário.
+     * Executa de forma assíncrona quando chamado via @Async.
+     * 
+     * @param userId ID do usuário
+     * @return Resultado do processamento
+     */
+    @Transactional
+    fun refreshOpenTickets(userId: Long): RefreshResult {
+        logger.info("Starting refresh of open tickets for user: {}", userId)
+        
+        val openTickets = ticketRepository.findOpenTicketsByUserId(userId)
+        
+        if (openTickets.isEmpty()) {
+            logger.info("No open tickets to refresh for user: {}", userId)
+            return RefreshResult(
+                totalProcessed = 0,
+                updated = 0,
+                unchanged = 0,
+                errors = 0
+            )
+        }
+        
+        logger.info("Found {} open tickets to refresh for user: {}", openTickets.size, userId)
+        
+        var updated = 0
+        var unchanged = 0
+        val errorDetails = mutableListOf<RefreshError>()
+        
+        for (ticket in openTickets) {
+            try {
+                val wasUpdated = refreshSingleTicket(ticket)
+                if (wasUpdated) {
+                    updated++
+                } else {
+                    unchanged++
+                }
+            } catch (e: Exception) {
+                logger.error("Error refreshing ticket {}: {}", ticket.id, e.message)
+                errorDetails.add(RefreshError(
+                    ticketId = ticket.id!!,
+                    externalTicketId = ticket.externalTicketId,
+                    errorMessage = e.message ?: "Unknown error"
+                ))
+            }
+        }
+        
+        val result = RefreshResult(
+            totalProcessed = openTickets.size,
+            updated = updated,
+            unchanged = unchanged,
+            errors = errorDetails.size,
+            errorDetails = errorDetails
+        )
+        
+        logger.info("Refresh completed for user {}: {}", userId, result)
+        
+        return result
+    }
+    
+    /**
+     * Atualiza todos os bilhetes em aberto de todos os usuários.
+     * Usado pelo job agendado.
+     * 
+     * @return Resultado do processamento
+     */
+    @Transactional
+    fun refreshAllOpenTickets(): RefreshResult {
+        logger.info("Starting scheduled refresh of all open tickets")
+        
+        val allOpenTickets = ticketRepository.findAllOpenTicketsWithSourceUrl()
+        
+        if (allOpenTickets.isEmpty()) {
+            logger.info("No open tickets to refresh")
+            return RefreshResult(
+                totalProcessed = 0,
+                updated = 0,
+                unchanged = 0,
+                errors = 0
+            )
+        }
+        
+        logger.info("Found {} open tickets to refresh", allOpenTickets.size)
+        
+        var updated = 0
+        var unchanged = 0
+        val errorDetails = mutableListOf<RefreshError>()
+        
+        for (ticket in allOpenTickets) {
+            try {
+                val wasUpdated = refreshSingleTicket(ticket)
+                if (wasUpdated) {
+                    updated++
+                } else {
+                    unchanged++
+                }
+            } catch (e: Exception) {
+                logger.error("Error refreshing ticket {}: {}", ticket.id, e.message)
+                errorDetails.add(RefreshError(
+                    ticketId = ticket.id!!,
+                    externalTicketId = ticket.externalTicketId,
+                    errorMessage = e.message ?: "Unknown error"
+                ))
+            }
+        }
+        
+        val result = RefreshResult(
+            totalProcessed = allOpenTickets.size,
+            updated = updated,
+            unchanged = unchanged,
+            errors = errorDetails.size,
+            errorDetails = errorDetails
+        )
+        
+        logger.info("Scheduled refresh completed: {}", result)
+        
+        return result
+    }
+    
+    /**
+     * Atualiza um único bilhete consultando a API do provider.
+     * 
+     * @param ticket Entidade do bilhete a ser atualizado
+     * @return true se o bilhete foi atualizado, false se permaneceu igual
+     */
+    private fun refreshSingleTicket(ticket: BetTicketEntity): Boolean {
+        val sourceUrl = ticket.sourceUrl 
+            ?: throw IllegalStateException("Ticket ${ticket.id} has no sourceUrl")
+        
+        // Encontra a strategy apropriada
+        val strategy = providerFactory.findStrategyForUrl(sourceUrl)
+            ?: throw IllegalStateException("No strategy found for URL: $sourceUrl")
+        
+        // Busca o provider no banco
+        val provider = providerRepository.findById(ticket.providerId).orElse(null)
+            ?: throw IllegalStateException("Provider not found: ${ticket.providerId}")
+        
+        // Extrai o código do bilhete
+        val ticketCode = strategy.extractTicketCode(sourceUrl)
+            ?: throw IllegalStateException("Could not extract ticket code from URL: $sourceUrl")
+        
+        // Busca os dados atualizados da API
+        val apiUrl = strategy.buildApiUrl(ticketCode, provider.apiUrlTemplate)
+        val responseBody = httpGateway.get(apiUrl)
+        val parsedData = strategy.parseResponse(responseBody)
+        
+        // Verifica se houve mudança no status
+        if (parsedData.ticketStatus == ticket.ticketStatus) {
+            logger.debug("Ticket {} status unchanged: {}", ticket.id, ticket.ticketStatus)
+            return false
+        }
+        
+        logger.info("Ticket {} status changed: {} -> {}", 
+            ticket.id, ticket.ticketStatus, parsedData.ticketStatus)
+        
+        // Atualiza os campos do bilhete
+        ticket.ticketStatus = parsedData.ticketStatus
+        ticket.actualPayout = parsedData.actualPayout
+        ticket.settledAt = parsedData.settledAt ?: System.currentTimeMillis()
+        
+        // Recalcula o status financeiro
+        val statusResult = BetStatusCalculator.calculateFromTicket(
+            stake = ticket.stake,
+            actualPayout = ticket.actualPayout,
+            potentialPayout = ticket.potentialPayout,
+            ticketStatus = ticket.ticketStatus
+        )
+        
+        ticket.financialStatus = statusResult.financialStatus
+        ticket.profitLoss = statusResult.profitLoss
+        ticket.roi = statusResult.roi
+        
+        // Atualiza as seleções se houver dados
+        if (parsedData.selections.isNotEmpty()) {
+            val existingSelections = ticket.selections.associateBy { it.externalSelectionId }
+            
+            for (selectionData in parsedData.selections) {
+                val existingSelection = existingSelections[selectionData.externalSelectionId]
+                if (existingSelection != null) {
+                    existingSelection.status = selectionData.status
+                    existingSelection.eventResult = selectionData.eventResult
+                }
+            }
+        }
+        
+        ticketRepository.save(ticket)
+        
+        return true
+    }
 }
