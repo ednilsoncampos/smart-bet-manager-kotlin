@@ -144,3 +144,48 @@ data class PagedResponse<T>(
     val hasNext: Boolean,
     val hasPrevious: Boolean
 )
+
+// ============================================
+// Refresh Open Tickets DTOs
+// ============================================
+
+/**
+ * Resposta do endpoint de refresh de bilhetes em aberto.
+ * Retornado imediatamente (202 Accepted) enquanto o processamento ocorre em background.
+ */
+data class RefreshOpenTicketsResponse(
+    val message: String,
+    val ticketsToRefresh: Int,
+    val status: RefreshStatus = RefreshStatus.PROCESSING
+)
+
+/**
+ * Resultado do processamento de refresh de bilhetes.
+ * Usado internamente e nos logs.
+ */
+data class RefreshResult(
+    val totalProcessed: Int,
+    val updated: Int,
+    val unchanged: Int,
+    val errors: Int,
+    val errorDetails: List<RefreshError> = emptyList()
+)
+
+/**
+ * Detalhes de erro durante o refresh de um bilhete.
+ */
+data class RefreshError(
+    val ticketId: Long,
+    val externalTicketId: String?,
+    val errorMessage: String
+)
+
+/**
+ * Status do processamento de refresh.
+ */
+enum class RefreshStatus {
+    PROCESSING,
+    COMPLETED,
+    PARTIAL_ERROR,
+    FAILED
+}
