@@ -4,7 +4,7 @@ import com.smartbet.domain.entity.BettingProvider
 import jakarta.persistence.*
 
 @Entity
-@Table(name = "betting_providers")
+@Table(name = "betting_providers", schema = "core")
 class BettingProviderEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

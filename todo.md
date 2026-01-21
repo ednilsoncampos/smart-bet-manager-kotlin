@@ -19,3 +19,13 @@
 - [x] 12. Corrigir testes do BetanoStrategy (5 testes falhando devido à exception)
 - [x] 13. Adicionar testes para novos campos sport_id e is_bet_builder
 - [x] 14. Adicionar testes para medianOdd no AnalyticsService
+
+## Feature: Correção de Schemas nas Entidades JPA
+
+- [x] 15. Atualizar UserEntity com @Table(schema = "core")
+- [x] 16. Atualizar BettingProviderEntity com @Table(schema = "core")
+- [x] 17. Atualizar BankrollEntity com @Table(schema = "core")
+- [x] 18. Atualizar BankrollTransactionEntity com @Table(schema = "core")
+- [x] 19. Atualizar BetTicketEntity com @Table(schema = "betting")
+- [x] 20. Atualizar BetSelectionEntity com @Table(schema = "betting")
+- [x] 21. Remover provider_api_requests da migração V3 (tabela não tem entidade JPA)

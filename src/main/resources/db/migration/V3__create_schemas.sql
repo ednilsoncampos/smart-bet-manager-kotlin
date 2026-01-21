@@ -25,7 +25,9 @@ ALTER TABLE bet_selections SET SCHEMA betting;
 -- ============================================
 -- Move tables to log schema
 -- ============================================
-ALTER TABLE provider_api_requests SET SCHEMA log;
+-- Note: provider_api_requests table is not managed by JPA entities
+-- It will remain in public schema for now
+-- ALTER TABLE provider_api_requests SET SCHEMA log;
 
 -- ============================================
 -- Update foreign key references
