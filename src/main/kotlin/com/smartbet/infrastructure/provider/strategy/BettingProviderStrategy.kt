@@ -96,5 +96,9 @@ data class ParsedSelectionData(
     val odd: BigDecimal,
     val status: com.smartbet.domain.enum.SelectionStatus,
     val eventDate: Long?,
-    val eventResult: String?
+    val eventResult: String?,
+    /** ID do esporte - ex: "5" (Superbet), "FOOT" (Betano) */
+    val sportId: String? = null,
+    /** Indica se é uma aposta combinada (Bet Builder) */
+    val isBetBuilder: Boolean = false
 )

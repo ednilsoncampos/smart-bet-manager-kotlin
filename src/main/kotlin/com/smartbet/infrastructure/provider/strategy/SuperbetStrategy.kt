@@ -235,8 +235,19 @@ class SuperbetStrategy(
                 .takeIf { it > 0 }
                 ?: 1.0
             
+            // Sport ID - ex: "5" para futebol
+            val sportId = event.path("sportId").asText()
+                .takeIf { it.isNotEmpty() }
+            
+            // Tournament ID - usado para buscar nome do torneio
+            val tournamentId = event.path("tournamentId").asText()
+                .takeIf { it.isNotEmpty() }
+            
             // Verifica se tem eventComponents (mercados combinados)
             val eventComponents = event.path("eventComponents")
+            
+            // Detecta se é Bet Builder (múltiplos mercados no mesmo evento)
+            val isBetBuilder = !eventComponents.isMissingNode && eventComponents.isArray && eventComponents.size() > 1
             
             if (!eventComponents.isMissingNode && eventComponents.isArray && eventComponents.size() > 0) {
                 // Múltiplos mercados no mesmo evento - criar uma seleção para cada
@@ -262,13 +273,15 @@ class SuperbetStrategy(
                                 .ifEmpty { oddComponent.path("oddId").asText() }
                                 .takeIf { it.isNotEmpty() },
                             eventName = eventName,
-                            tournamentName = null, // Superbet não retorna torneio diretamente
+                            tournamentName = tournamentId, // Usar tournamentId como referência
                             marketType = marketName,
                             selection = selectionName,
                             odd = BigDecimal.valueOf(componentOdd),
                             status = componentStatus,
                             eventDate = eventDate,
-                            eventResult = null
+                            eventResult = null,
+                            sportId = sportId,
+                            isBetBuilder = isBetBuilder
                         )
                     )
                 }
@@ -289,13 +302,15 @@ class SuperbetStrategy(
                             .ifEmpty { event.path("eventId").asText() }
                             .takeIf { it.isNotEmpty() },
                         eventName = eventName,
-                        tournamentName = null,
+                        tournamentName = tournamentId, // Usar tournamentId como referência
                         marketType = marketName,
                         selection = selectionName,
                         odd = BigDecimal.valueOf(eventOdd),
                         status = eventStatus,
                         eventDate = eventDate,
-                        eventResult = null
+                        eventResult = null,
+                        sportId = sportId,
+                        isBetBuilder = false
                     )
                 )
             }
