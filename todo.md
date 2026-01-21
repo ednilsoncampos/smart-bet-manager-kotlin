@@ -13,3 +13,9 @@
 - [x] 09. Corrigir contagem de status no getPerformanceByProvider (incluir todos os status)
 - [x] 10. Atualizar DTOs de response para medianOdd
 - [x] 11. Compilar e testar (BUILD SUCCESSFUL)
+
+## Feature: Correção de Testes
+
+- [x] 12. Corrigir testes do BetanoStrategy (5 testes falhando devido à exception)
+- [x] 13. Adicionar testes para novos campos sport_id e is_bet_builder
+- [x] 14. Adicionar testes para medianOdd no AnalyticsService

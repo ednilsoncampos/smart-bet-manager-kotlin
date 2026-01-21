@@ -448,4 +448,151 @@ class SuperbetStrategyTest {
             assertEquals("Sim", selection2.selection)
         }
     }
+
+    @Nested
+    @DisplayName("Novos campos: sportId e isBetBuilder")
+    inner class NewFieldsTests {
+        
+        @Test
+        @DisplayName("deve extrair sportId do evento")
+        fun shouldExtractSportIdFromEvent() {
+            val json = """
+            {
+                "ticketId": "TICKET-SPORT-001",
+                "status": "win",
+                "coefficient": 2.00,
+                "payment": { "stake": 100.00 },
+                "win": { "potentialTotalWinnings": 200.00, "payoff": 200.00 },
+                "events": [
+                    {
+                        "name": ["Flamengo", "Palmeiras"],
+                        "status": "win",
+                        "sportId": "5",
+                        "tournamentId": "245",
+                        "coefficient": 2.00,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado Final" },
+                                "oddComponent": { "name": "Flamengo", "oddStatus": "WIN" }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            assertEquals(1, result.selections.size)
+            assertEquals("5", result.selections[0].sportId)
+            assertEquals("245", result.selections[0].tournamentName)
+        }
+        
+        @Test
+        @DisplayName("deve detectar isBetBuilder quando há múltiplos eventComponents")
+        fun shouldDetectBetBuilderWithMultipleComponents() {
+            val json = """
+            {
+                "ticketId": "TICKET-BB-001",
+                "status": "win",
+                "coefficient": 3.50,
+                "payment": { "stake": 50.00 },
+                "win": { "potentialTotalWinnings": 175.00, "payoff": 175.00 },
+                "events": [
+                    {
+                        "name": ["Bayern Munich", "Wolfsburg"],
+                        "status": "win",
+                        "sportId": "5",
+                        "tournamentId": "245",
+                        "coefficient": 3.50,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Total de Gols" },
+                                "oddComponent": { "name": "Mais de 2.5", "oddStatus": "WIN" }
+                            },
+                            {
+                                "market": { "name": "Ambas Marcam" },
+                                "oddComponent": { "name": "Sim", "oddStatus": "WIN" }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            assertEquals(2, result.selections.size)
+            // Ambas as seleções devem ser marcadas como Bet Builder
+            assertTrue(result.selections[0].isBetBuilder)
+            assertTrue(result.selections[1].isBetBuilder)
+            assertEquals("5", result.selections[0].sportId)
+            assertEquals("5", result.selections[1].sportId)
+        }
+        
+        @Test
+        @DisplayName("não deve marcar como isBetBuilder quando há apenas um eventComponent")
+        fun shouldNotMarkAsBetBuilderWithSingleComponent() {
+            val json = """
+            {
+                "ticketId": "TICKET-SINGLE-001",
+                "status": "win",
+                "coefficient": 2.00,
+                "payment": { "stake": 100.00 },
+                "win": { "potentialTotalWinnings": 200.00, "payoff": 200.00 },
+                "events": [
+                    {
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "sportId": "5",
+                        "coefficient": 2.00,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado Final" },
+                                "oddComponent": { "name": "Time A", "oddStatus": "WIN" }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            assertEquals(1, result.selections.size)
+            assertFalse(result.selections[0].isBetBuilder)
+        }
+        
+        @Test
+        @DisplayName("deve manter sportId nulo quando não presente no JSON")
+        fun shouldKeepSportIdNullWhenNotPresent() {
+            val json = """
+            {
+                "ticketId": "TICKET-NO-SPORT",
+                "status": "win",
+                "coefficient": 2.00,
+                "payment": { "stake": 100.00 },
+                "win": { "potentialTotalWinnings": 200.00, "payoff": 200.00 },
+                "events": [
+                    {
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "coefficient": 2.00,
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado" },
+                                "oddComponent": { "name": "Time A", "oddStatus": "WIN" }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            assertNull(result.selections[0].sportId)
+            assertNull(result.selections[0].tournamentName)
+        }
+    }
 }
