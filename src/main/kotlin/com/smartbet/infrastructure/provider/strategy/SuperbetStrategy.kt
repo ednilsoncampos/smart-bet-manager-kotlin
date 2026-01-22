@@ -23,12 +23,13 @@ import java.time.Instant
  * - coefficient: odd total
  * - payment.stake: valor apostado
  * - win.totalWinnings: ganho total
+ * - win.isCashedOut: indica se foi feito cashout
  * - events[]: lista de eventos/seleções
  *   - name: ["Time1", "Time2"]
  *   - date: data do evento
  *   - status: win, lost, etc.
  *   - coefficient: odd do evento
- *   - eventComponents[]: mercados combinados
+ *   - eventComponents[]: mercados combinados (Bet Builder)
  *     - market.name: nome do mercado
  *     - oddComponent.name: seleção escolhida
  *     - oddComponent.oddStatus: WIN, LOST, etc.
@@ -108,6 +109,9 @@ class SuperbetStrategy(
             ?: data.path("payout").asDouble()
             .takeIf { it > 0 }
         
+        // Cashout - verifica se foi feito cashout
+        val isCashedOut = winNode.path("isCashedOut").asBoolean(false)
+        
         // Status do bilhete
         val statusStr = data.path("status").asText().lowercase()
         val ticketStatus = mapTicketStatus(statusStr)
@@ -139,8 +143,8 @@ class SuperbetStrategy(
             .takeIf { it.isNotEmpty() && ticketStatus != TicketStatus.OPEN }
             ?.let { parseTimestamp(it) }
         
-        // Seleções - estão em "events"
-        val selections = parseSelections(data.path("events"))
+        // Seleções e componentes - estão em "events"
+        val (selections, selectionComponents) = parseSelectionsAndComponents(data.path("events"))
         
         // Validar que stake e odd total não estão zerados
         validateTicketData(ticketId, stake, totalOdd)
@@ -156,7 +160,9 @@ class SuperbetStrategy(
             systemDescription = systemDescription,
             placedAt = placedAt,
             settledAt = settledAt,
-            selections = selections
+            isCashedOut = isCashedOut,
+            selections = selections,
+            selectionComponents = selectionComponents
         )
     }
     
@@ -199,16 +205,23 @@ class SuperbetStrategy(
     }
     
     /**
-     * Parseia os eventos do bilhete.
-     * Cada evento pode ter múltiplos eventComponents (mercados combinados).
-     * Nesse caso, criamos uma seleção para cada eventComponent.
+     * Parseia os eventos do bilhete e extrai componentes quando existirem.
+     * 
+     * Quando o array eventComponents não está vazio, indica que é uma aposta
+     * do tipo "Criar Aposta" (Bet Builder), onde múltiplos mercados são
+     * agrupados em um único evento.
+     * 
+     * @return Pair de (seleções, mapa de componentes por selectionId)
      */
-    private fun parseSelections(eventsNode: JsonNode): List<ParsedSelectionData> {
+    private fun parseSelectionsAndComponents(
+        eventsNode: JsonNode
+    ): Pair<List<ParsedSelectionData>, Map<String, List<ParsedSelectionComponentData>>> {
         if (eventsNode.isMissingNode || !eventsNode.isArray) {
-            return emptyList()
+            return Pair(emptyList(), emptyMap())
         }
         
         val selections = mutableListOf<ParsedSelectionData>()
+        val componentsMap = mutableMapOf<String, List<ParsedSelectionComponentData>>()
         
         for (event in eventsNode) {
             // Nome do evento - array ["Time1", "Time2"]
@@ -246,17 +259,32 @@ class SuperbetStrategy(
             // Verifica se tem eventComponents (mercados combinados)
             val eventComponents = event.path("eventComponents")
             
-            // Detecta se é Bet Builder (múltiplos mercados no mesmo evento)
-            val isBetBuilder = !eventComponents.isMissingNode && eventComponents.isArray && eventComponents.size() > 1
+            // Detecta se é Bet Builder: array eventComponents não está vazio
+            val hasBetBuilderComponents = !eventComponents.isMissingNode && 
+                                          eventComponents.isArray && 
+                                          eventComponents.size() > 0
             
-            if (!eventComponents.isMissingNode && eventComponents.isArray && eventComponents.size() > 0) {
-                // Múltiplos mercados no mesmo evento - criar uma seleção para cada
+            // ID único para a seleção
+            val oddNode = event.path("odd")
+            val selectionId = oddNode.path("oddUuid").asText()
+                .ifEmpty { oddNode.path("oddId").asText() }
+                .ifEmpty { event.path("eventId").asText() }
+            
+            if (hasBetBuilderComponents) {
+                // É Bet Builder - criar uma seleção principal e extrair componentes
+                val components = mutableListOf<ParsedSelectionComponentData>()
+                
+                // Construir nome da seleção combinando os componentes
+                val selectionNames = mutableListOf<String>()
+                
                 for (component in eventComponents) {
-                    val marketName = component.path("market").path("name").asText()
+                    val marketId = component.path("market").path("marketId").asText()
                         .takeIf { it.isNotEmpty() }
+                    val marketName = component.path("market").path("name").asText()
+                        .ifEmpty { "Mercado desconhecido" }
                     
                     val oddComponent = component.path("oddComponent")
-                    val selectionName = oddComponent.path("name").asText()
+                    val componentSelectionName = oddComponent.path("name").asText()
                         .ifEmpty { "Seleção desconhecida" }
                     
                     val componentStatusStr = oddComponent.path("oddStatus").asText().lowercase()
@@ -264,45 +292,57 @@ class SuperbetStrategy(
                         .ifEmpty { component.path("status").asText().lowercase() }
                     val componentStatus = mapSelectionStatus(componentStatusStr)
                     
-                    // Usa a odd do evento (não divide)
-                    val componentOdd = eventOdd.takeIf { it > 0 } ?: 1.0
+                    // Adicionar ao nome combinado
+                    selectionNames.add("$marketName: $componentSelectionName")
                     
-                    selections.add(
-                        ParsedSelectionData(
-                            externalSelectionId = oddComponent.path("oddUuid").asText()
-                                .ifEmpty { oddComponent.path("oddId").asText() }
-                                .takeIf { it.isNotEmpty() },
-                            eventName = eventName,
-                            tournamentName = tournamentId, // Usar tournamentId como referência
-                            marketType = marketName,
-                            selection = selectionName,
-                            odd = BigDecimal.valueOf(componentOdd),
-                            status = componentStatus,
-                            eventDate = eventDate,
-                            eventResult = null,
-                            sportId = sportId,
-                            isBetBuilder = isBetBuilder
+                    // Criar componente
+                    components.add(
+                        ParsedSelectionComponentData(
+                            marketId = marketId,
+                            marketName = marketName,
+                            selectionName = componentSelectionName,
+                            status = componentStatus
                         )
                     )
+                }
+                
+                // Criar seleção principal com nome combinado
+                val combinedSelection = selectionNames.joinToString(" | ")
+                
+                selections.add(
+                    ParsedSelectionData(
+                        externalSelectionId = selectionId.takeIf { it.isNotEmpty() },
+                        eventName = eventName,
+                        tournamentName = tournamentId,
+                        marketType = "Criar Aposta", // Market type fixo para Bet Builder
+                        selection = combinedSelection,
+                        odd = BigDecimal.valueOf(eventOdd),
+                        status = eventStatus,
+                        eventDate = eventDate,
+                        eventResult = null,
+                        sportId = sportId,
+                        isBetBuilder = true
+                    )
+                )
+                
+                // Mapear componentes pelo selectionId
+                if (selectionId.isNotEmpty() && components.isNotEmpty()) {
+                    componentsMap[selectionId] = components
                 }
             } else {
                 // Evento simples sem eventComponents
                 val marketName = event.path("market").path("name").asText()
                     .takeIf { it.isNotEmpty() }
                 
-                val oddNode = event.path("odd")
                 val selectionName = oddNode.path("name").asText()
                     .ifEmpty { event.path("outcomeName").asText() }
                     .ifEmpty { "Seleção desconhecida" }
                 
                 selections.add(
                     ParsedSelectionData(
-                        externalSelectionId = oddNode.path("oddUuid").asText()
-                            .ifEmpty { oddNode.path("oddId").asText() }
-                            .ifEmpty { event.path("eventId").asText() }
-                            .takeIf { it.isNotEmpty() },
+                        externalSelectionId = selectionId.takeIf { it.isNotEmpty() },
                         eventName = eventName,
-                        tournamentName = tournamentId, // Usar tournamentId como referência
+                        tournamentName = tournamentId,
                         marketType = marketName,
                         selection = selectionName,
                         odd = BigDecimal.valueOf(eventOdd),
@@ -316,7 +356,7 @@ class SuperbetStrategy(
             }
         }
         
-        return selections
+        return Pair(selections, componentsMap)
     }
     
     private fun mapSelectionStatus(status: String): SelectionStatus {

@@ -9,6 +9,7 @@ import com.smartbet.domain.enum.TicketStatus
 import com.smartbet.infrastructure.persistence.entity.BetSelectionEntity
 import com.smartbet.infrastructure.persistence.entity.BetTicketEntity
 import com.smartbet.infrastructure.persistence.entity.BettingProviderEntity
+import com.smartbet.infrastructure.persistence.repository.BetSelectionComponentRepository
 import com.smartbet.infrastructure.persistence.repository.BetSelectionRepository
 import com.smartbet.infrastructure.persistence.repository.BetTicketRepository
 import com.smartbet.infrastructure.persistence.repository.BettingProviderRepository
@@ -38,6 +39,9 @@ class TicketServiceTest {
     
     @MockK
     private lateinit var selectionRepository: BetSelectionRepository
+    
+    @MockK
+    private lateinit var selectionComponentRepository: BetSelectionComponentRepository
     
     @MockK
     private lateinit var providerRepository: BettingProviderRepository

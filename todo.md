@@ -1,31 +1,46 @@
 # Smart Bet Manager Kotlin - TODO
 
-## Feature: Correções Parser Betano + Schemas + Analytics
+## Feature: Bet Builder (Criar Aposta)
 
-- [x] 01. Adicionar exception no parser Betano indicando que está em desenvolvimento
-- [x] 02. Criar migração V2 para adicionar campos sport_id e is_bet_builder em bet_selections
-- [x] 03. Criar migração V3 para schemas (core, betting, log)
-- [x] 04. Atualizar entidades JPA para novos campos (sport_id, is_bet_builder)
-- [x] 05. Atualizar ParsedSelectionData para incluir novos campos
-- [x] 06. Atualizar SuperbetStrategy para extrair sport_id e is_bet_builder
-- [x] 07. Atualizar BetanoStrategy para extrair sport_id e is_bet_builder (com exception)
-- [x] 08. Substituir averageOdd por medianOdd no AnalyticsService
-- [x] 09. Corrigir contagem de status no getPerformanceByProvider (incluir todos os status)
-- [x] 10. Atualizar DTOs de response para medianOdd
-- [x] 11. Compilar e testar (BUILD SUCCESSFUL)
+- [x] 01. Criar migração V4 com tabela bet_selection_components
+- [x] 02. Criar entidade de domínio BetSelectionComponent
+- [x] 03. Criar entidade JPA BetSelectionComponentEntity
+- [x] 04. Criar repository BetSelectionComponentRepository
+- [x] 05. Atualizar SuperbetStrategy para extrair eventComponents quando array não estiver vazio
+- [x] 06. Atualizar TicketService para salvar components
 
-## Feature: Correção de Testes
+## Feature: Tratamento de Cashout
 
-- [x] 12. Corrigir testes do BetanoStrategy (5 testes falhando devido à exception)
-- [x] 13. Adicionar testes para novos campos sport_id e is_bet_builder
-- [x] 14. Adicionar testes para medianOdd no AnalyticsService
+- [x] 07. Adicionar campo is_cashed_out em bet_tickets (migração V4)
+- [x] 08. Atualizar BetTicket e BetTicketEntity com campo isCashedOut
+- [x] 09. Atualizar SuperbetStrategy para extrair win.isCashedOut e win.totalWinnings
+- [x] 10. Implementar lógica de FinancialStatus para cashout (BREAK_EVEN, PARTIAL_WIN, PARTIAL_LOSS)
 
-## Feature: Correção de Schemas nas Entidades JPA
+## Feature: Validação de Bilhete Duplicado
 
-- [x] 15. Atualizar UserEntity com @Table(schema = "core")
-- [x] 16. Atualizar BettingProviderEntity com @Table(schema = "core")
-- [x] 17. Atualizar BankrollEntity com @Table(schema = "core")
-- [x] 18. Atualizar BankrollTransactionEntity com @Table(schema = "core")
-- [x] 19. Atualizar BetTicketEntity com @Table(schema = "betting")
-- [x] 20. Atualizar BetSelectionEntity com @Table(schema = "betting")
-- [x] 21. Remover provider_api_requests da migração V3 (tabela não tem entidade JPA)
+- [x] 11. Adicionar constraint UNIQUE (user_id, external_ticket_id) na migração V4
+- [x] 12. Criar DuplicateTicketException
+- [x] 13. Adicionar query findByUserIdAndExternalTicketId no repository
+- [x] 14. Implementar validação de duplicata no TicketService
+- [x] 15. Adicionar tratamento de DuplicateTicketException no GlobalExceptionHandler (HTTP 409)
+
+## Testes
+
+- [x] 16. Adicionar testes para extração de eventComponents
+- [x] 17. Adicionar testes para lógica de cashout
+- [x] 18. Adicionar testes para validação de duplicata
+
+## Build
+
+- [x] 19. BUILD SUCCESSFUL - Todos os testes passaram
+
+## Cores de Referência (Frontend)
+
+| Status | Cor | Código Hex |
+|--------|-----|------------|
+| FULL_WIN | Verde | #22C55E |
+| PARTIAL_WIN | Verde Água | #2DD4BF |
+| BREAK_EVEN | Cinza | #9CA3AF |
+| PARTIAL_LOSS | Laranja Claro | #FB923C |
+| TOTAL_LOSS | Vermelho | #EF4444 |
+| PENDING | Azul | #3B82F6 |

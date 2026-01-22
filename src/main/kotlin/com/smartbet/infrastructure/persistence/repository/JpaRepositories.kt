@@ -119,6 +119,11 @@ interface BetTicketRepository : JpaRepository<BetTicketEntity, Long> {
     """)
     fun findAllOpenTicketsWithSourceUrl(): List<BetTicketEntity>
     
+    /**
+     * Verifica se já existe um bilhete com o mesmo external_ticket_id para o usuário.
+     * Usado para evitar importação duplicada.
+     */
+    fun findByUserIdAndExternalTicketId(userId: Long, externalTicketId: String): BetTicketEntity?
 }
 
 @Repository
@@ -146,6 +151,13 @@ interface BetSelectionRepository : JpaRepository<BetSelectionEntity, Long> {
         ORDER BY COUNT(s) DESC
     """)
     fun getStatsByMarket(@Param("userId") userId: Long): List<Array<Any>>
+}
+
+@Repository
+interface BetSelectionComponentRepository : JpaRepository<BetSelectionComponentEntity, Long> {
+    fun findBySelectionId(selectionId: Long): List<BetSelectionComponentEntity>
+    
+    fun deleteBySelectionId(selectionId: Long)
 }
 
 @Repository
