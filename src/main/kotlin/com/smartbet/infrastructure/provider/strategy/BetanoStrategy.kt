@@ -45,6 +45,15 @@ class BetanoStrategy(
     }
     
     override fun parseResponse(responseBody: String): ParsedTicketData {
+        // Parser da Betano em desenvolvimento - a API não retorna bilhetes já realizados
+        throw UnsupportedOperationException(
+            "Parser da Betano em desenvolvimento. " +
+            "A API da Betano não disponibiliza endpoint público para consulta de bilhetes já realizados. " +
+            "Por favor, utilize outra casa de apostas ou aguarde atualizações."
+        )
+        
+        // Código original mantido para referência futura
+        @Suppress("UNREACHABLE_CODE")
         val root = objectMapper.readTree(responseBody)
         
         // Betano pode retornar dados em diferentes estruturas

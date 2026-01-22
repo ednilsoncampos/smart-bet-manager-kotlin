@@ -6,7 +6,7 @@ import jakarta.persistence.*
 import java.math.BigDecimal
 
 @Entity
-@Table(name = "bet_selections")
+@Table(name = "bet_selections", schema = "betting")
 class BetSelectionEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,6 +44,12 @@ class BetSelectionEntity(
     @Column(name = "event_result", length = 100)
     var eventResult: String? = null,
     
+    @Column(name = "sport_id", length = 50)
+    var sportId: String? = null,
+    
+    @Column(name = "is_bet_builder")
+    var isBetBuilder: Boolean = false,
+    
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Long = System.currentTimeMillis(),
     
@@ -62,6 +68,8 @@ class BetSelectionEntity(
         status = status,
         eventDate = eventDate,
         eventResult = eventResult,
+        sportId = sportId,
+        isBetBuilder = isBetBuilder,
         createdAt = createdAt,
         updatedAt = updatedAt
     )
@@ -79,6 +87,8 @@ class BetSelectionEntity(
             status = selection.status,
             eventDate = selection.eventDate,
             eventResult = selection.eventResult,
+            sportId = selection.sportId,
+            isBetBuilder = selection.isBetBuilder,
             createdAt = selection.createdAt,
             updatedAt = selection.updatedAt
         )

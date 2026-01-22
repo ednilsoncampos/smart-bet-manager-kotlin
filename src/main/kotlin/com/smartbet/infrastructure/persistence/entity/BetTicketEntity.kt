@@ -9,7 +9,7 @@ import jakarta.persistence.*
 import java.math.BigDecimal
 
 @Entity
-@Table(name = "bet_tickets")
+@Table(name = "bet_tickets", schema = "betting")
 class BetTicketEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

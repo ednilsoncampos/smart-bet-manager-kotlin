@@ -106,7 +106,9 @@ class TicketService(
                 odd = selectionData.odd,
                 status = selectionData.status,
                 eventDate = selectionData.eventDate,
-                eventResult = selectionData.eventResult
+                eventResult = selectionData.eventResult,
+                sportId = selectionData.sportId,
+                isBetBuilder = selectionData.isBetBuilder
             )
         }
         

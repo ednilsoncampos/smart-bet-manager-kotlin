@@ -41,6 +41,12 @@ data class BetSelection(
     /** Resultado do evento (se disponível) */
     val eventResult: String? = null,
     
+    /** ID do esporte - ex: "FOOT", "BASK", "TENN" */
+    val sportId: String? = null,
+    
+    /** Indica se é uma aposta combinada (Bet Builder) */
+    val isBetBuilder: Boolean = false,
+    
     /** Timestamp de criação (milissegundos desde epoch UTC) */
     val createdAt: Long = System.currentTimeMillis(),
     
