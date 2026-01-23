@@ -1,6 +1,9 @@
 package com.smartbet.infrastructure.provider.strategy
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.smartbet.infrastructure.provider.gateway.HttpGateway
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -9,15 +12,18 @@ import org.junit.jupiter.api.Test
 
 @DisplayName("BettingProviderFactory")
 class BettingProviderFactoryTest {
-    
+
     private lateinit var factory: BettingProviderFactory
     private lateinit var superbetStrategy: SuperbetStrategy
     private lateinit var betanoStrategy: BetanoStrategy
-    
+    private lateinit var httpGateway: HttpGateway
+
     @BeforeEach
     fun setup() {
         val objectMapper = jacksonObjectMapper()
-        superbetStrategy = SuperbetStrategy(objectMapper)
+        httpGateway = mockk(relaxed = true)
+        every { httpGateway.get(any(), any()) } returns "[]"
+        superbetStrategy = SuperbetStrategy(objectMapper, httpGateway)
         betanoStrategy = BetanoStrategy(objectMapper)
         factory = BettingProviderFactory(listOf(superbetStrategy, betanoStrategy))
     }

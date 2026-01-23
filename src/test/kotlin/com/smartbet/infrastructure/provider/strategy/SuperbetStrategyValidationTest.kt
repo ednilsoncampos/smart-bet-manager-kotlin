@@ -2,7 +2,10 @@ package com.smartbet.infrastructure.provider.strategy
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.smartbet.infrastructure.provider.gateway.HttpGateway
 import com.smartbet.presentation.exception.InvalidTicketDataException
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -11,14 +14,17 @@ import org.junit.jupiter.api.Test
 
 @DisplayName("SuperbetStrategy - Validação de Dados")
 class SuperbetStrategyValidationTest {
-    
+
     private lateinit var strategy: SuperbetStrategy
     private lateinit var objectMapper: ObjectMapper
-    
+    private lateinit var httpGateway: HttpGateway
+
     @BeforeEach
     fun setup() {
         objectMapper = jacksonObjectMapper()
-        strategy = SuperbetStrategy(objectMapper)
+        httpGateway = mockk(relaxed = true)
+        every { httpGateway.get(any(), any()) } returns "[]"
+        strategy = SuperbetStrategy(objectMapper, httpGateway)
     }
     
     @Nested

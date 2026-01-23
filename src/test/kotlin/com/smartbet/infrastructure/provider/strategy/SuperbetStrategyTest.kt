@@ -5,6 +5,9 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.smartbet.domain.enum.BetType
 import com.smartbet.domain.enum.SelectionStatus
 import com.smartbet.domain.enum.TicketStatus
+import com.smartbet.infrastructure.provider.gateway.HttpGateway
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -14,14 +17,18 @@ import java.math.BigDecimal
 
 @DisplayName("SuperbetStrategy")
 class SuperbetStrategyTest {
-    
+
     private lateinit var strategy: SuperbetStrategy
     private lateinit var objectMapper: ObjectMapper
-    
+    private lateinit var httpGateway: HttpGateway
+
     @BeforeEach
     fun setup() {
         objectMapper = jacksonObjectMapper()
-        strategy = SuperbetStrategy(objectMapper)
+        httpGateway = mockk(relaxed = true)
+        // Mock padrão retorna array vazio para qualquer chamada ao catálogo de torneios
+        every { httpGateway.get(any(), any()) } returns "[]"
+        strategy = SuperbetStrategy(objectMapper, httpGateway)
     }
     
     @Nested
@@ -470,7 +477,8 @@ class SuperbetStrategyTest {
             
             assertEquals(1, result.selections.size)
             assertEquals("5", result.selections[0].sportId)
-            assertEquals("245", result.selections[0].tournamentName)
+            // tournamentName é resolvido via catálogo; mock retorna vazio, então será "Torneio não identificado"
+            assertEquals("Torneio não identificado", result.selections[0].tournamentName)
             // Com eventComponents, é Bet Builder
             assertTrue(result.selections[0].isBetBuilder)
         }
@@ -515,7 +523,8 @@ class SuperbetStrategyTest {
             assertEquals(1, result.selections.size)
             assertTrue(result.selections[0].isBetBuilder)
             assertEquals("5", result.selections[0].sportId)
-            assertEquals("245", result.selections[0].tournamentName)
+            // tournamentName é resolvido via catálogo; mock retorna vazio, então será "Torneio não identificado"
+            assertEquals("Torneio não identificado", result.selections[0].tournamentName)
             assertEquals("Criar Aposta", result.selections[0].marketType)
             assertTrue(result.selections[0].selection.contains("Total de Gols"))
             assertTrue(result.selections[0].selection.contains("Ambas Marcam"))
@@ -598,7 +607,8 @@ class SuperbetStrategyTest {
             val result = strategy.parseResponse(json)
             
             assertNull(result.selections[0].sportId)
-            assertNull(result.selections[0].tournamentName)
+            // Sem tournamentId no JSON, retorna "Torneio não identificado"
+            assertEquals("Torneio não identificado", result.selections[0].tournamentName)
             // Ainda é Bet Builder pois tem eventComponents
             assertTrue(result.selections[0].isBetBuilder)
         }
