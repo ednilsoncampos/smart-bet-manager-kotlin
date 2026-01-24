@@ -2,15 +2,21 @@ package com.smartbet.application.usecase
 
 import com.smartbet.application.dto.*
 import com.smartbet.domain.entity.BetSelection
+import com.smartbet.domain.entity.BetSelectionComponent
 import com.smartbet.domain.entity.BetTicket
 import com.smartbet.domain.enum.FinancialStatus
 import com.smartbet.domain.enum.TicketStatus
+import com.smartbet.domain.exception.DuplicateTicketException
 import com.smartbet.domain.service.BetStatusCalculator
+import com.smartbet.infrastructure.persistence.entity.BetSelectionComponentEntity
 import com.smartbet.infrastructure.persistence.entity.BetSelectionEntity
 import com.smartbet.infrastructure.persistence.entity.BetTicketEntity
+import com.smartbet.infrastructure.persistence.entity.TournamentEntity
+import com.smartbet.infrastructure.persistence.repository.BetSelectionComponentRepository
 import com.smartbet.infrastructure.persistence.repository.BetSelectionRepository
 import com.smartbet.infrastructure.persistence.repository.BetTicketRepository
 import com.smartbet.infrastructure.persistence.repository.BettingProviderRepository
+import com.smartbet.infrastructure.persistence.repository.TournamentRepository
 import com.smartbet.infrastructure.provider.gateway.HttpGateway
 import com.smartbet.infrastructure.provider.strategy.BettingProviderFactory
 import org.slf4j.LoggerFactory
@@ -23,7 +29,9 @@ import org.springframework.transaction.annotation.Transactional
 class TicketService(
     private val ticketRepository: BetTicketRepository,
     private val selectionRepository: BetSelectionRepository,
+    private val selectionComponentRepository: BetSelectionComponentRepository,
     private val providerRepository: BettingProviderRepository,
+    private val tournamentRepository: TournamentRepository,
     private val providerFactory: BettingProviderFactory,
     private val httpGateway: HttpGateway
 ) {
@@ -48,11 +56,14 @@ class TicketService(
         val ticketCode = strategy.extractTicketCode(request.url)
             ?: throw IllegalArgumentException("Não foi possível extrair o código do bilhete da URL")
         
-        // Verifica se o bilhete já existe
-        val existingTicket = ticketRepository.findByExternalTicketIdAndProviderId(ticketCode, provider.id!!)
+        // Verifica se o bilhete já existe para este usuário
+        val existingTicket = ticketRepository.findByUserIdAndExternalTicketId(userId, ticketCode)
         if (existingTicket != null) {
-            logger.info("Ticket already exists, returning existing: {}", existingTicket.id)
-            return TicketResponse.fromDomain(existingTicket.toDomain(), provider.name)
+            logger.warn("Duplicate ticket detected: {} for user: {}", ticketCode, userId)
+            throw DuplicateTicketException(
+                ticketId = ticketCode,
+                message = "Bilhete $ticketCode já foi importado anteriormente"
+            )
         }
         
         // Busca os dados da API
@@ -73,7 +84,7 @@ class TicketService(
         // Cria a entidade do bilhete
         val ticketEntity = BetTicketEntity(
             userId = userId,
-            providerId = provider.id,
+            providerId = provider.id!!,
             bankrollId = request.bankrollId,
             externalTicketId = parsedData.externalTicketId,
             sourceUrl = request.url,
@@ -88,19 +99,24 @@ class TicketService(
             roi = statusResult.roi,
             systemDescription = parsedData.systemDescription,
             placedAt = parsedData.placedAt,
-            settledAt = parsedData.settledAt
+            settledAt = parsedData.settledAt,
+            isCashedOut = parsedData.isCashedOut
         )
         
         // Salva o bilhete
         val savedTicket = ticketRepository.save(ticketEntity)
         
-        // Cria as seleções
+        // Cria as seleções (resolvendo Tournament pelo externalTournamentId)
         val selectionEntities = parsedData.selections.map { selectionData ->
+            val tournament = selectionData.externalTournamentId?.let { extId ->
+                tournamentRepository.findByProviderIdAndExternalId(provider.id!!, extId)
+            }
+
             BetSelectionEntity(
                 ticket = savedTicket,
                 externalSelectionId = selectionData.externalSelectionId,
                 eventName = selectionData.eventName,
-                tournamentName = selectionData.tournamentName,
+                tournament = tournament,
                 marketType = selectionData.marketType,
                 selection = selectionData.selection,
                 odd = selectionData.odd,
@@ -112,8 +128,28 @@ class TicketService(
             )
         }
         
-        selectionRepository.saveAll(selectionEntities)
-        savedTicket.selections.addAll(selectionEntities)
+        val savedSelections = selectionRepository.saveAll(selectionEntities)
+        savedTicket.selections.addAll(savedSelections)
+        
+        // Salva os componentes das seleções (para Bet Builder)
+        for (savedSelection in savedSelections) {
+            val externalId = savedSelection.externalSelectionId ?: continue
+            val components = parsedData.selectionComponents[externalId] ?: continue
+            
+            if (components.isNotEmpty()) {
+                val componentEntities = components.map { componentData ->
+                    BetSelectionComponentEntity(
+                        selection = savedSelection,
+                        marketId = componentData.marketId,
+                        marketName = componentData.marketName,
+                        selectionName = componentData.selectionName,
+                        status = componentData.status
+                    )
+                }
+                selectionComponentRepository.saveAll(componentEntities)
+                logger.debug("Saved {} components for selection {}", components.size, savedSelection.id)
+            }
+        }
         
         logger.info("Ticket imported successfully: {}", savedTicket.id)
         
@@ -152,10 +188,14 @@ class TicketService(
         val savedTicket = ticketRepository.save(ticketEntity)
         
         val selectionEntities = request.selections.map { selectionRequest ->
+            val tournament = selectionRequest.tournamentId?.let { tournamentId ->
+                tournamentRepository.findById(tournamentId).orElse(null)
+            }
+
             BetSelectionEntity(
                 ticket = savedTicket,
                 eventName = selectionRequest.eventName,
-                tournamentName = selectionRequest.tournamentName,
+                tournament = tournament,
                 marketType = selectionRequest.marketType,
                 selection = selectionRequest.selection,
                 odd = selectionRequest.odd,
@@ -451,6 +491,7 @@ class TicketService(
         ticket.ticketStatus = parsedData.ticketStatus
         ticket.actualPayout = parsedData.actualPayout
         ticket.settledAt = parsedData.settledAt ?: System.currentTimeMillis()
+        ticket.isCashedOut = parsedData.isCashedOut
         
         // Recalcula o status financeiro
         val statusResult = BetStatusCalculator.calculateFromTicket(

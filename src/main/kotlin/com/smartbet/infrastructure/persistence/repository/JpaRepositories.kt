@@ -119,6 +119,11 @@ interface BetTicketRepository : JpaRepository<BetTicketEntity, Long> {
     """)
     fun findAllOpenTicketsWithSourceUrl(): List<BetTicketEntity>
     
+    /**
+     * Verifica se já existe um bilhete com o mesmo external_ticket_id para o usuário.
+     * Usado para evitar importação duplicada.
+     */
+    fun findByUserIdAndExternalTicketId(userId: Long, externalTicketId: String): BetTicketEntity?
 }
 
 @Repository
@@ -126,12 +131,12 @@ interface BetSelectionRepository : JpaRepository<BetSelectionEntity, Long> {
     fun findByTicketId(ticketId: Long): List<BetSelectionEntity>
     
     @Query("""
-        SELECT s.tournamentName, COUNT(s), 
+        SELECT s.tournament.name, COUNT(s),
                SUM(CASE WHEN s.status = 'WON' THEN 1 ELSE 0 END)
         FROM BetSelectionEntity s
         WHERE s.ticket.userId = :userId
-        AND s.tournamentName IS NOT NULL
-        GROUP BY s.tournamentName
+        AND s.tournament IS NOT NULL
+        GROUP BY s.tournament.name
         ORDER BY COUNT(s) DESC
     """)
     fun getStatsByTournament(@Param("userId") userId: Long): List<Array<Any>>
@@ -149,6 +154,13 @@ interface BetSelectionRepository : JpaRepository<BetSelectionEntity, Long> {
 }
 
 @Repository
+interface BetSelectionComponentRepository : JpaRepository<BetSelectionComponentEntity, Long> {
+    fun findBySelectionId(selectionId: Long): List<BetSelectionComponentEntity>
+    
+    fun deleteBySelectionId(selectionId: Long)
+}
+
+@Repository
 interface BankrollRepository : JpaRepository<BankrollEntity, Long> {
     fun findByUserId(userId: Long): List<BankrollEntity>
     fun findByUserIdAndIsActiveTrue(userId: Long): List<BankrollEntity>
@@ -158,9 +170,23 @@ interface BankrollRepository : JpaRepository<BankrollEntity, Long> {
 @Repository
 interface BankrollTransactionRepository : JpaRepository<BankrollTransactionEntity, Long> {
     fun findByBankrollIdOrderByCreatedAtDesc(
-        bankrollId: Long, 
+        bankrollId: Long,
         pageable: Pageable
     ): Page<BankrollTransactionEntity>
-    
+
     fun findByBankrollId(bankrollId: Long): List<BankrollTransactionEntity>
+}
+
+@Repository
+interface SportRepository : JpaRepository<SportEntity, Long> {
+    fun findByProviderIdAndExternalId(providerId: Long, externalId: Int): SportEntity?
+    fun findByProviderId(providerId: Long): List<SportEntity>
+}
+
+@Repository
+interface TournamentRepository : JpaRepository<TournamentEntity, Long> {
+    fun findByProviderIdAndExternalId(providerId: Long, externalId: Int): TournamentEntity?
+    fun findByProviderId(providerId: Long): List<TournamentEntity>
+    fun findBySportId(sportId: Long): List<TournamentEntity>
+    fun countByProviderId(providerId: Long): Long
 }

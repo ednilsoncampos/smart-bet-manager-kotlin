@@ -1,5 +1,6 @@
 package com.smartbet.presentation.exception
 
+import com.smartbet.domain.exception.DuplicateTicketException
 import com.smartbet.infrastructure.provider.gateway.HttpGatewayException
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -66,6 +67,19 @@ class GlobalExceptionHandler {
                 error = "Unprocessable Entity",
                 message = ex.message ?: "Dados do bilhete inválidos",
                 errors = ex.details,
+                timestamp = Instant.now()
+            ))
+    }
+    
+    @ExceptionHandler(DuplicateTicketException::class)
+    fun handleDuplicateTicket(ex: DuplicateTicketException): ResponseEntity<ErrorResponse> {
+        logger.warn("Duplicate ticket: {}", ex.ticketId)
+        return ResponseEntity
+            .status(HttpStatus.CONFLICT)
+            .body(ErrorResponse(
+                status = HttpStatus.CONFLICT.value(),
+                error = "Conflict",
+                message = ex.message ?: "Bilhete já importado",
                 timestamp = Instant.now()
             ))
     }
