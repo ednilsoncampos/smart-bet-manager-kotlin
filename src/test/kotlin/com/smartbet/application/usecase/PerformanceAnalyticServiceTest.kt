@@ -19,20 +19,20 @@ import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.Pageable
 import java.math.BigDecimal
 
-@DisplayName("AnalyticsService")
-class AnalyticsServiceTest {
+@DisplayName("PerformanceAnalyticService")
+class PerformanceAnalyticServiceTest {
     
     private lateinit var ticketRepository: BetTicketRepository
     private lateinit var selectionRepository: BetSelectionRepository
     private lateinit var providerRepository: BettingProviderRepository
-    private lateinit var analyticsService: AnalyticsService
+    private lateinit var performanceAnalyticService: PerformanceAnalyticService
     
     @BeforeEach
     fun setup() {
         ticketRepository = mockk()
         selectionRepository = mockk()
         providerRepository = mockk()
-        analyticsService = AnalyticsService(ticketRepository, selectionRepository, providerRepository)
+        performanceAnalyticService = PerformanceAnalyticService(ticketRepository, selectionRepository, providerRepository)
     }
     
     private fun createTicket(
@@ -80,7 +80,7 @@ class AnalyticsServiceTest {
             
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
             
-            val result = analyticsService.getOverallPerformance(1L)
+            val result = performanceAnalyticService.getOverallPerformance(1L)
             
             // Mediana de [1.50, 2.00, 3.00] = 2.00 (elemento central)
             assertEquals(BigDecimal("2.00"), result.medianOdd.setScale(2))
@@ -98,7 +98,7 @@ class AnalyticsServiceTest {
             
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
             
-            val result = analyticsService.getOverallPerformance(1L)
+            val result = performanceAnalyticService.getOverallPerformance(1L)
             
             // Mediana de [1.50, 2.00, 3.00, 4.00] = (2.00 + 3.00) / 2 = 2.50
             assertEquals(BigDecimal("2.50"), result.medianOdd.setScale(2))
@@ -109,7 +109,7 @@ class AnalyticsServiceTest {
         fun shouldReturnZeroWhenNoTickets() {
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(emptyList())
             
-            val result = analyticsService.getOverallPerformance(1L)
+            val result = performanceAnalyticService.getOverallPerformance(1L)
             
             assertEquals(BigDecimal.ZERO, result.medianOdd)
             assertEquals(0L, result.totalBets)
@@ -127,11 +127,39 @@ class AnalyticsServiceTest {
             
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
             
-            val result = analyticsService.getOverallPerformance(1L)
+            val result = performanceAnalyticService.getOverallPerformance(1L)
             
             // Mediana de [1.50, 2.00, 2.50, 100.00] = (2.00 + 2.50) / 2 = 2.25
             // A média seria (1.50 + 2.00 + 2.50 + 100.00) / 4 = 26.50 (distorcida pelo outlier)
             assertEquals(BigDecimal("2.25"), result.medianOdd.setScale(2))
+        }
+        
+        @Test
+        @DisplayName("deve contar todos os status financeiros detalhados")
+        fun shouldCountAllDetailedFinancialStatuses() {
+            val tickets = listOf(
+                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
+                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.PARTIAL_WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
+                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0")),
+                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.PARTIAL_LOSS, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
+                createTicket(5, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("0"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.TOTAL_LOSS, profitLoss = BigDecimal("-100")),
+                createTicket(6, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = null, ticketStatus = TicketStatus.OPEN, financialStatus = FinancialStatus.PENDING, profitLoss = BigDecimal("0"))
+            )
+            
+            every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
+            
+            val result = performanceAnalyticService.getOverallPerformance(1L)
+            
+            assertEquals(6L, result.totalBets)
+            assertEquals(5L, result.settledBets)
+            assertEquals(1L, result.openBets)
+            assertEquals(1L, result.fullWins)
+            assertEquals(1L, result.partialWins)
+            assertEquals(1L, result.breakEven)
+            assertEquals(1L, result.partialLosses)
+            assertEquals(1L, result.totalLosses)
+            assertEquals(2L, result.wins) // fullWins + partialWins
+            assertEquals(2L, result.losses) // totalLosses + partialLosses
         }
     }
     
@@ -146,16 +174,16 @@ class AnalyticsServiceTest {
             
             val tickets = listOf(
                 createTicket(1, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(2, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
+                createTicket(2, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.PARTIAL_WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
                 createTicket(3, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("0"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.TOTAL_LOSS, profitLoss = BigDecimal("-100")),
-                createTicket(4, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
+                createTicket(4, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.PARTIAL_LOSS, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
                 createTicket(5, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0"))
             )
             
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
             every { providerRepository.findAll() } returns listOf(provider)
             
-            val result = analyticsService.getPerformanceByProvider(1L)
+            val result = performanceAnalyticService.getPerformanceByProvider(1L)
             
             assertEquals(1, result.size)
             val providerStats = result[0]
@@ -183,7 +211,7 @@ class AnalyticsServiceTest {
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
             every { providerRepository.findAll() } returns listOf(provider)
             
-            val result = analyticsService.getPerformanceByProvider(1L)
+            val result = performanceAnalyticService.getPerformanceByProvider(1L)
             
             assertEquals(1, result.size)
             assertEquals(1L, result[0].totalBets) // Apenas o bilhete WON

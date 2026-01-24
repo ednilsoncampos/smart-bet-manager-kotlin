@@ -44,3 +44,35 @@
 | PARTIAL_LOSS | Laranja Claro | #FB923C |
 | TOTAL_LOSS | Vermelho | #EF4444 |
 | PENDING | Azul | #3B82F6 |
+
+## Feature: Status Parciais e Refatoração de Analytics
+
+### Enums
+- [ ] 20. Adicionar PARTIAL_WIN e PARTIAL_LOSS em TicketStatus.kt
+- [ ] 21. Adicionar HALF_WON e HALF_LOST em SelectionStatus.kt
+
+### Renomear Classes
+- [ ] 22. Renomear AnalyticsDtos.kt para PerformanceAnalyticDto.kt
+- [ ] 23. Renomear AnalyticsService.kt para PerformanceAnalyticService.kt
+- [ ] 24. Renomear AnalyticsServiceTest.kt para PerformanceAnalyticServiceTest.kt
+- [ ] 25. Atualizar imports em AnalyticsController.kt
+
+### DTOs de Performance
+- [ ] 26. Adicionar isCashedOut em TicketResponse
+- [ ] 27. Adicionar campos detalhados em OverallPerformanceResponse
+- [ ] 28. Adicionar campos detalhados em PerformanceByMarketResponse
+- [ ] 29. Adicionar campos detalhados em PerformanceByTournamentResponse
+
+### Lógica de Parsing
+- [ ] 30. Atualizar mapeamento de status em SuperbetStrategy.kt
+- [ ] 31. Atualizar mapeamento de status em BetanoStrategy.kt
+
+### Lógica de Analytics
+- [ ] 32. Atualizar PerformanceAnalyticService para calcular status parciais
+
+### Testes
+- [ ] 33. Atualizar testes existentes
+- [ ] 34. Adicionar testes para novos status
+
+### Build
+- [ ] 35. Compilar e testar

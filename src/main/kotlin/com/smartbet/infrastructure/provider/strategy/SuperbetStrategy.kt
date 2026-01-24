@@ -201,6 +201,8 @@ class SuperbetStrategy(
     private fun mapTicketStatus(status: String): TicketStatus {
         return when {
             status.contains("open") || status.contains("pending") || status.contains("active") -> TicketStatus.OPEN
+            status.contains("partial_win") || status.contains("partialwin") -> TicketStatus.PARTIAL_WIN
+            status.contains("partial_loss") || status.contains("partialloss") -> TicketStatus.PARTIAL_LOSS
             status.contains("won") || status == "win" -> TicketStatus.WON
             status.contains("lost") || status == "lose" -> TicketStatus.LOST
             status.contains("void") || status.contains("cancelled") -> TicketStatus.VOID
@@ -366,6 +368,8 @@ class SuperbetStrategy(
     private fun mapSelectionStatus(status: String): SelectionStatus {
         return when {
             status.contains("pending") || status.contains("open") || status.contains("active") || status.isEmpty() -> SelectionStatus.PENDING
+            status.contains("half_won") || status.contains("halfwon") -> SelectionStatus.HALF_WON
+            status.contains("half_lost") || status.contains("halflost") -> SelectionStatus.HALF_LOST
             status.contains("won") || status == "win" -> SelectionStatus.WON
             status.contains("lost") || status == "lose" -> SelectionStatus.LOST
             status.contains("void") || status.contains("cancelled") -> SelectionStatus.VOID

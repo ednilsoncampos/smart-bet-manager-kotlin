@@ -7,11 +7,17 @@ enum class SelectionStatus {
     /** Seleção ainda em andamento */
     PENDING,
     
-    /** Seleção vencedora */
+    /** Seleção vencedora (acerto total) */
     WON,
     
-    /** Seleção perdedora */
+    /** Seleção meio ganha (ex: handicap asiático) */
+    HALF_WON,
+    
+    /** Seleção perdedora (erro total) */
     LOST,
+    
+    /** Seleção meio perdida (ex: handicap asiático) */
+    HALF_LOST,
     
     /** Seleção anulada (odd ajustada para 1.0) */
     VOID,

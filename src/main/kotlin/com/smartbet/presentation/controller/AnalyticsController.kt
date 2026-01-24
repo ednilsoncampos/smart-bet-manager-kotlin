@@ -1,7 +1,7 @@
 package com.smartbet.presentation.controller
 
 import com.smartbet.application.dto.*
-import com.smartbet.application.usecase.AnalyticsService
+import com.smartbet.application.usecase.PerformanceAnalyticService
 import com.smartbet.application.usecase.BankrollEvolutionService
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/analytics")
 @Tag(name = "Analytics", description = "Análise de performance de apostas")
 class AnalyticsController(
-    private val analyticsService: AnalyticsService,
+    private val performanceAnalyticService: PerformanceAnalyticService,
     private val bankrollEvolutionService: BankrollEvolutionService
 ) {
     
@@ -22,7 +22,7 @@ class AnalyticsController(
     fun getOverallPerformance(
         @AuthenticationPrincipal userId: Long
     ): ResponseEntity<OverallPerformanceResponse> {
-        val performance = analyticsService.getOverallPerformance(userId)
+        val performance = performanceAnalyticService.getOverallPerformance(userId)
         return ResponseEntity.ok(performance)
     }
     
@@ -31,7 +31,7 @@ class AnalyticsController(
     fun getPerformanceByTournament(
         @AuthenticationPrincipal userId: Long
     ): ResponseEntity<List<PerformanceByTournamentResponse>> {
-        val performance = analyticsService.getPerformanceByTournament(userId)
+        val performance = performanceAnalyticService.getPerformanceByTournament(userId)
         return ResponseEntity.ok(performance)
     }
     
@@ -40,7 +40,7 @@ class AnalyticsController(
     fun getPerformanceByMarket(
         @AuthenticationPrincipal userId: Long
     ): ResponseEntity<List<PerformanceByMarketResponse>> {
-        val performance = analyticsService.getPerformanceByMarket(userId)
+        val performance = performanceAnalyticService.getPerformanceByMarket(userId)
         return ResponseEntity.ok(performance)
     }
     
@@ -49,7 +49,7 @@ class AnalyticsController(
     fun getPerformanceByProvider(
         @AuthenticationPrincipal userId: Long
     ): ResponseEntity<List<PerformanceByProviderResponse>> {
-        val performance = analyticsService.getPerformanceByProvider(userId)
+        val performance = performanceAnalyticService.getPerformanceByProvider(userId)
         return ResponseEntity.ok(performance)
     }
     
