@@ -11,10 +11,12 @@ import com.smartbet.domain.service.BetStatusCalculator
 import com.smartbet.infrastructure.persistence.entity.BetSelectionComponentEntity
 import com.smartbet.infrastructure.persistence.entity.BetSelectionEntity
 import com.smartbet.infrastructure.persistence.entity.BetTicketEntity
+import com.smartbet.infrastructure.persistence.entity.TournamentEntity
 import com.smartbet.infrastructure.persistence.repository.BetSelectionComponentRepository
 import com.smartbet.infrastructure.persistence.repository.BetSelectionRepository
 import com.smartbet.infrastructure.persistence.repository.BetTicketRepository
 import com.smartbet.infrastructure.persistence.repository.BettingProviderRepository
+import com.smartbet.infrastructure.persistence.repository.TournamentRepository
 import com.smartbet.infrastructure.provider.gateway.HttpGateway
 import com.smartbet.infrastructure.provider.strategy.BettingProviderFactory
 import org.slf4j.LoggerFactory
@@ -29,6 +31,7 @@ class TicketService(
     private val selectionRepository: BetSelectionRepository,
     private val selectionComponentRepository: BetSelectionComponentRepository,
     private val providerRepository: BettingProviderRepository,
+    private val tournamentRepository: TournamentRepository,
     private val providerFactory: BettingProviderFactory,
     private val httpGateway: HttpGateway
 ) {
@@ -103,13 +106,17 @@ class TicketService(
         // Salva o bilhete
         val savedTicket = ticketRepository.save(ticketEntity)
         
-        // Cria as seleções
+        // Cria as seleções (resolvendo Tournament pelo externalTournamentId)
         val selectionEntities = parsedData.selections.map { selectionData ->
+            val tournament = selectionData.externalTournamentId?.let { extId ->
+                tournamentRepository.findByProviderIdAndExternalId(provider.id!!, extId)
+            }
+
             BetSelectionEntity(
                 ticket = savedTicket,
                 externalSelectionId = selectionData.externalSelectionId,
                 eventName = selectionData.eventName,
-                tournamentName = selectionData.tournamentName,
+                tournament = tournament,
                 marketType = selectionData.marketType,
                 selection = selectionData.selection,
                 odd = selectionData.odd,
@@ -181,10 +188,14 @@ class TicketService(
         val savedTicket = ticketRepository.save(ticketEntity)
         
         val selectionEntities = request.selections.map { selectionRequest ->
+            val tournament = selectionRequest.tournamentId?.let { tournamentId ->
+                tournamentRepository.findById(tournamentId).orElse(null)
+            }
+
             BetSelectionEntity(
                 ticket = savedTicket,
                 eventName = selectionRequest.eventName,
-                tournamentName = selectionRequest.tournamentName,
+                tournament = tournament,
                 marketType = selectionRequest.marketType,
                 selection = selectionRequest.selection,
                 odd = selectionRequest.odd,

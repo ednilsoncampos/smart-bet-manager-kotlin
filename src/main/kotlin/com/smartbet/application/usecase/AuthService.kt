@@ -36,9 +36,9 @@ class AuthService(
         val savedUser = userRepository.save(userEntity)
         
         // Gerar tokens
-        val accessToken = jwtService.generateAccessToken(savedUser.id!!, savedUser.email)
-        val refreshToken = jwtService.generateRefreshToken(savedUser.id, savedUser.email)
-        
+        val accessToken = jwtService.generateAccessToken(savedUser.id!!, savedUser.email, savedUser.role.name)
+        val refreshToken = jwtService.generateRefreshToken(savedUser.id, savedUser.email, savedUser.role.name)
+
         return AuthResponse(
             accessToken = accessToken,
             refreshToken = refreshToken,
@@ -58,9 +58,9 @@ class AuthService(
         }
         
         // Gerar tokens
-        val accessToken = jwtService.generateAccessToken(userEntity.id!!, userEntity.email)
-        val refreshToken = jwtService.generateRefreshToken(userEntity.id!!, userEntity.email)
-        
+        val accessToken = jwtService.generateAccessToken(userEntity.id!!, userEntity.email, userEntity.role.name)
+        val refreshToken = jwtService.generateRefreshToken(userEntity.id!!, userEntity.email, userEntity.role.name)
+
         return AuthResponse(
             accessToken = accessToken,
             refreshToken = refreshToken,
@@ -68,7 +68,7 @@ class AuthService(
             user = userEntity.toUserResponse()
         )
     }
-    
+
     fun refreshToken(request: RefreshTokenRequest): TokenRefreshResponse {
         // Validar refresh token
         if (!jwtService.validateRefreshToken(request.refreshToken)) {
@@ -85,9 +85,9 @@ class AuthService(
         }
         
         // Gerar novos tokens
-        val accessToken = jwtService.generateAccessToken(userEntity.id!!, userEntity.email)
-        val refreshToken = jwtService.generateRefreshToken(userEntity.id!!, userEntity.email)
-        
+        val accessToken = jwtService.generateAccessToken(userEntity.id!!, userEntity.email, userEntity.role.name)
+        val refreshToken = jwtService.generateRefreshToken(userEntity.id!!, userEntity.email, userEntity.role.name)
+
         return TokenRefreshResponse(
             accessToken = accessToken,
             refreshToken = refreshToken,

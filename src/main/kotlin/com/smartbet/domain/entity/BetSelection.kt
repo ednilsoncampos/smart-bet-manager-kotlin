@@ -19,10 +19,13 @@ data class BetSelection(
     
     /** Nome do evento - ex: "Flamengo x Palmeiras" */
     val eventName: String,
-    
-    /** Nome do campeonato/competição */
+
+    /** ID do torneio (referência à tabela tournaments) */
+    val tournamentId: Long? = null,
+
+    /** Nome do torneio (derivado do relacionamento, usado em responses) */
     val tournamentName: String? = null,
-    
+
     /** Tipo de mercado - ex: "Resultado Final", "Ambas Marcam" */
     val marketType: String? = null,
     

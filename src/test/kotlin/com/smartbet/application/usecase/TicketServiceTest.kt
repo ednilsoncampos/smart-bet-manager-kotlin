@@ -13,6 +13,7 @@ import com.smartbet.infrastructure.persistence.repository.BetSelectionComponentR
 import com.smartbet.infrastructure.persistence.repository.BetSelectionRepository
 import com.smartbet.infrastructure.persistence.repository.BetTicketRepository
 import com.smartbet.infrastructure.persistence.repository.BettingProviderRepository
+import com.smartbet.infrastructure.persistence.repository.TournamentRepository
 import com.smartbet.infrastructure.provider.gateway.HttpGateway
 import com.smartbet.infrastructure.provider.strategy.BettingProviderFactory
 import io.mockk.*
@@ -33,25 +34,28 @@ import java.util.*
 @ExtendWith(MockKExtension::class)
 @DisplayName("TicketService")
 class TicketServiceTest {
-    
+
     @MockK
     private lateinit var ticketRepository: BetTicketRepository
-    
+
     @MockK
     private lateinit var selectionRepository: BetSelectionRepository
-    
+
     @MockK
     private lateinit var selectionComponentRepository: BetSelectionComponentRepository
-    
+
     @MockK
     private lateinit var providerRepository: BettingProviderRepository
-    
+
+    @MockK
+    private lateinit var tournamentRepository: TournamentRepository
+
     @MockK
     private lateinit var providerFactory: BettingProviderFactory
-    
+
     @MockK
     private lateinit var httpGateway: HttpGateway
-    
+
     @InjectMockKs
     private lateinit var ticketService: TicketService
     
@@ -85,7 +89,7 @@ class TicketServiceTest {
                 selections = listOf(
                     CreateSelectionRequest(
                         eventName = "Flamengo x Palmeiras",
-                        tournamentName = "Brasileirão",
+                        tournamentId = null, // Sem torneio associado
                         marketType = "Resultado Final",
                         selection = "Flamengo",
                         odd = BigDecimal("2.50")

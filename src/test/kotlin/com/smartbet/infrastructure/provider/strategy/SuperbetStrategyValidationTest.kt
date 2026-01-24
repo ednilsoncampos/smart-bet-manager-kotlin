@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.smartbet.infrastructure.provider.gateway.HttpGateway
 import com.smartbet.presentation.exception.InvalidTicketDataException
-import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
@@ -23,7 +22,6 @@ class SuperbetStrategyValidationTest {
     fun setup() {
         objectMapper = jacksonObjectMapper()
         httpGateway = mockk(relaxed = true)
-        every { httpGateway.get(any(), any()) } returns "[]"
         strategy = SuperbetStrategy(objectMapper, httpGateway)
     }
     

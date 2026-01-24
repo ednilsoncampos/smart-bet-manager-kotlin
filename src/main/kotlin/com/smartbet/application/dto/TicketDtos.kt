@@ -28,7 +28,7 @@ data class CreateManualTicketRequest(
 
 data class CreateSelectionRequest(
     val eventName: String,
-    val tournamentName: String? = null,
+    val tournamentId: Long? = null,
     val marketType: String? = null,
     val selection: String,
     val odd: BigDecimal,

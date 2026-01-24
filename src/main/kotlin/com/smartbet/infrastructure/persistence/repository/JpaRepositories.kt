@@ -131,12 +131,12 @@ interface BetSelectionRepository : JpaRepository<BetSelectionEntity, Long> {
     fun findByTicketId(ticketId: Long): List<BetSelectionEntity>
     
     @Query("""
-        SELECT s.tournamentName, COUNT(s), 
+        SELECT s.tournament.name, COUNT(s),
                SUM(CASE WHEN s.status = 'WON' THEN 1 ELSE 0 END)
         FROM BetSelectionEntity s
         WHERE s.ticket.userId = :userId
-        AND s.tournamentName IS NOT NULL
-        GROUP BY s.tournamentName
+        AND s.tournament IS NOT NULL
+        GROUP BY s.tournament.name
         ORDER BY COUNT(s) DESC
     """)
     fun getStatsByTournament(@Param("userId") userId: Long): List<Array<Any>>
@@ -170,9 +170,23 @@ interface BankrollRepository : JpaRepository<BankrollEntity, Long> {
 @Repository
 interface BankrollTransactionRepository : JpaRepository<BankrollTransactionEntity, Long> {
     fun findByBankrollIdOrderByCreatedAtDesc(
-        bankrollId: Long, 
+        bankrollId: Long,
         pageable: Pageable
     ): Page<BankrollTransactionEntity>
-    
+
     fun findByBankrollId(bankrollId: Long): List<BankrollTransactionEntity>
+}
+
+@Repository
+interface SportRepository : JpaRepository<SportEntity, Long> {
+    fun findByProviderIdAndExternalId(providerId: Long, externalId: Int): SportEntity?
+    fun findByProviderId(providerId: Long): List<SportEntity>
+}
+
+@Repository
+interface TournamentRepository : JpaRepository<TournamentEntity, Long> {
+    fun findByProviderIdAndExternalId(providerId: Long, externalId: Int): TournamentEntity?
+    fun findByProviderId(providerId: Long): List<TournamentEntity>
+    fun findBySportId(sportId: Long): List<TournamentEntity>
+    fun countByProviderId(providerId: Long): Long
 }

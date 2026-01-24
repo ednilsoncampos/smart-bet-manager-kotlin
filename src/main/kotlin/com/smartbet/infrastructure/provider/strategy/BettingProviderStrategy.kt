@@ -93,7 +93,8 @@ data class ParsedTicketData(
 data class ParsedSelectionData(
     val externalSelectionId: String?,
     val eventName: String,
-    val tournamentName: String?,
+    /** ID externo do torneio na API do provider (será resolvido para Tournament.id) */
+    val externalTournamentId: Int?,
     val marketType: String?,
     val selection: String,
     val odd: BigDecimal,

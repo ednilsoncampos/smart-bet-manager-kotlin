@@ -11,15 +11,14 @@ import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import java.math.BigDecimal
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Strategy para parser de bilhetes da Superbet.
- * 
+ *
  * URLs suportadas:
  * - https://superbet.bet.br/bilhete-compartilhado/{CODE}
  * - https://superbet.com.br/bilhete-compartilhado/{CODE}
- * 
+ *
  * Estrutura do JSON:
  * - ticketId: ID do bilhete
  * - status: win, lost, open, etc.
@@ -44,9 +43,6 @@ class SuperbetStrategy(
 ) : BettingProviderStrategy {
 
     private val logger = LoggerFactory.getLogger(SuperbetStrategy::class.java)
-
-    // Cache: tournamentId -> title (vida útil longa)
-    private val tournamentNameCache = ConcurrentHashMap<Int, String>()
 
     override val slug: String = "superbet"
     override val name: String = "Superbet"
@@ -321,7 +317,7 @@ class SuperbetStrategy(
                     ParsedSelectionData(
                         externalSelectionId = selectionId.takeIf { it.isNotEmpty() },
                         eventName = eventName,
-                        tournamentName = resolveTournamentName(tournamentId, eventDateStr),
+                        externalTournamentId = tournamentId?.toIntOrNull(),
                         marketType = "Criar Aposta", // Market type fixo para Bet Builder
                         selection = combinedSelection,
                         odd = BigDecimal.valueOf(eventOdd),
@@ -350,7 +346,7 @@ class SuperbetStrategy(
                     ParsedSelectionData(
                         externalSelectionId = selectionId.takeIf { it.isNotEmpty() },
                         eventName = eventName,
-                        tournamentName = resolveTournamentName(tournamentId, eventDateStr),
+                        externalTournamentId = tournamentId?.toIntOrNull(),
                         marketType = marketName,
                         selection = selectionName,
                         odd = BigDecimal.valueOf(eventOdd),
@@ -410,73 +406,5 @@ class SuperbetStrategy(
                 errors
             )
         }
-    }
-
-    /**
-     * Resolve o nome do torneio a partir do tournamentId usando o catálogo editorial.
-     *
-     * @param tournamentId ID do torneio (string)
-     * @param eventDate Data do evento em formato ISO (ex: "2026-01-24T14:30:00.000Z")
-     * @return Nome do torneio ou "Torneio não identificado" se não encontrar
-     */
-    private fun resolveTournamentName(tournamentId: String?, eventDate: String?): String {
-        if (tournamentId.isNullOrEmpty()) {
-            return "Torneio não identificado"
-        }
-
-        val id = tournamentId.toIntOrNull() ?: return "Torneio não identificado"
-
-        // Verifica cache primeiro
-        tournamentNameCache[id]?.let { return it }
-
-        // Cache miss - busca no catálogo
-        val date = extractDateFromTimestamp(eventDate) ?: return "Torneio não identificado"
-
-        fetchAndCacheTournamentCatalog(date)
-
-        return tournamentNameCache[id] ?: "Torneio não identificado"
-    }
-
-    /**
-     * Extrai a data (YYYY-MM-DD) de um timestamp ISO.
-     * Ex: "2026-01-24T14:30:00.000Z" -> "2026-01-24"
-     */
-    private fun extractDateFromTimestamp(timestamp: String?): String? {
-        if (timestamp.isNullOrEmpty()) return null
-        return timestamp.substringBefore("T").takeIf { it.matches(Regex("\\d{4}-\\d{2}-\\d{2}")) }
-    }
-
-    /**
-     * Busca o catálogo de torneios da API e popula o cache.
-     */
-    private fun fetchAndCacheTournamentCatalog(date: String) {
-        try {
-            val url = "$TOURNAMENT_CATALOG_URL$date"
-            val response = httpGateway.get(url)
-            val catalogArray = objectMapper.readTree(response)
-
-            if (catalogArray.isArray) {
-                for (item in catalogArray) {
-                    val title = item.path("title").asText().takeIf { it.isNotEmpty() } ?: continue
-                    val tournamentIds = item.path("tournamentIds")
-
-                    if (tournamentIds.isArray) {
-                        for (idNode in tournamentIds) {
-                            val id = idNode.asInt()
-                            if (id > 0) {
-                                tournamentNameCache.putIfAbsent(id, title)
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            logger.warn("Falha ao buscar catálogo de torneios para data {}: {}", date, e.message)
-        }
-    }
-
-    companion object {
-        private const val TOURNAMENT_CATALOG_URL =
-            "https://superbet-content.freetls.fastly.net/cached-superbet/hot-tournaments/offer/br/"
     }
 }

@@ -21,9 +21,10 @@ class BetSelectionEntity(
     
     @Column(name = "event_name", nullable = false)
     var eventName: String = "",
-    
-    @Column(name = "tournament_name")
-    var tournamentName: String? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tournament_id")
+    var tournament: TournamentEntity? = null,
     
     @Column(name = "market_type", length = 100)
     var marketType: String? = null,
@@ -61,7 +62,8 @@ class BetSelectionEntity(
         ticketId = ticket?.id ?: 0,
         externalSelectionId = externalSelectionId,
         eventName = eventName,
-        tournamentName = tournamentName,
+        tournamentId = tournament?.id,
+        tournamentName = tournament?.name,
         marketType = marketType,
         selection = selection,
         odd = odd,
@@ -73,14 +75,18 @@ class BetSelectionEntity(
         createdAt = createdAt,
         updatedAt = updatedAt
     )
-    
+
     companion object {
-        fun fromDomain(selection: BetSelection, ticketEntity: BetTicketEntity): BetSelectionEntity = BetSelectionEntity(
+        fun fromDomain(
+            selection: BetSelection,
+            ticketEntity: BetTicketEntity,
+            tournamentEntity: TournamentEntity? = null
+        ): BetSelectionEntity = BetSelectionEntity(
             id = selection.id,
             ticket = ticketEntity,
             externalSelectionId = selection.externalSelectionId,
             eventName = selection.eventName,
-            tournamentName = selection.tournamentName,
+            tournament = tournamentEntity,
             marketType = selection.marketType,
             selection = selection.selection,
             odd = selection.odd,
