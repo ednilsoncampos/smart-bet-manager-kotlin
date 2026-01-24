@@ -4,6 +4,7 @@ import com.smartbet.infrastructure.security.JwtAuthenticationFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.http.SessionCreationPolicy
@@ -17,6 +18,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 class SecurityConfig(
     private val jwtAuthenticationFilter: JwtAuthenticationFilter
 ) {
@@ -53,7 +55,10 @@ class SecurityConfig(
                     
                     // Actuator (health checks, metrics)
                     .requestMatchers("/actuator/**").permitAll()
-                    
+
+                    // Endpoints de administração (apenas ADMIN)
+                    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
                     // Todos os outros endpoints requerem autenticação
                     .anyRequest().authenticated()
             }

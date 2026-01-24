@@ -24,21 +24,22 @@ class JwtService(
         Keys.hmacShaKeyFor(secretKey.toByteArray())
     }
     
-    fun generateAccessToken(userId: Long, email: String): String {
-        return generateToken(userId, email, accessTokenExpiration, "access")
+    fun generateAccessToken(userId: Long, email: String, role: String = "USER"): String {
+        return generateToken(userId, email, role, accessTokenExpiration, "access")
     }
-    
-    fun generateRefreshToken(userId: Long, email: String): String {
-        return generateToken(userId, email, refreshTokenExpiration, "refresh")
+
+    fun generateRefreshToken(userId: Long, email: String, role: String = "USER"): String {
+        return generateToken(userId, email, role, refreshTokenExpiration, "refresh")
     }
-    
-    private fun generateToken(userId: Long, email: String, expiration: Long, type: String): String {
+
+    private fun generateToken(userId: Long, email: String, role: String, expiration: Long, type: String): String {
         val now = Date()
         val expiryDate = Date(now.time + expiration)
-        
+
         return Jwts.builder()
             .subject(userId.toString())
             .claim("email", email)
+            .claim("role", role)
             .claim("type", type)
             .issuedAt(now)
             .expiration(expiryDate)
@@ -88,6 +89,15 @@ class JwtService(
         return try {
             val claims = getClaims(token)
             claims["email"] as? String
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun getRoleFromToken(token: String): String? {
+        return try {
+            val claims = getClaims(token)
+            claims["role"] as? String
         } catch (e: Exception) {
             null
         }
