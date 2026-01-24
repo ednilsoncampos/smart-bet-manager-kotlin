@@ -19,10 +19,13 @@ data class BetSelection(
     
     /** Nome do evento - ex: "Flamengo x Palmeiras" */
     val eventName: String,
-    
-    /** Nome do campeonato/competição */
+
+    /** ID do torneio (referência à tabela tournaments) */
+    val tournamentId: Long? = null,
+
+    /** Nome do torneio (derivado do relacionamento, usado em responses) */
     val tournamentName: String? = null,
-    
+
     /** Tipo de mercado - ex: "Resultado Final", "Ambas Marcam" */
     val marketType: String? = null,
     
@@ -40,6 +43,12 @@ data class BetSelection(
     
     /** Resultado do evento (se disponível) */
     val eventResult: String? = null,
+    
+    /** ID do esporte - ex: "FOOT", "BASK", "TENN" */
+    val sportId: String? = null,
+    
+    /** Indica se é uma aposta combinada (Bet Builder) */
+    val isBetBuilder: Boolean = false,
     
     /** Timestamp de criação (milissegundos desde epoch UTC) */
     val createdAt: Long = System.currentTimeMillis(),

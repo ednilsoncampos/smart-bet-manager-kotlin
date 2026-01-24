@@ -4,6 +4,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource
 import org.springframework.stereotype.Component
@@ -50,15 +51,20 @@ class JwtAuthenticationFilter(
     ) {
         try {
             val token = extractToken(request)
-            
+
             if (token != null && jwtService.validateAccessToken(token)) {
                 val userId = jwtService.getUserIdFromToken(token)
-                
+                val role = jwtService.getRoleFromToken(token)
+
                 if (userId != null) {
+                    val authorities = role?.let {
+                        listOf(SimpleGrantedAuthority("ROLE_$it"))
+                    } ?: emptyList()
+
                     val authentication = UsernamePasswordAuthenticationToken(
                         userId,
                         null,
-                        emptyList()
+                        authorities
                     )
                     authentication.details = WebAuthenticationDetailsSource().buildDetails(request)
                     SecurityContextHolder.getContext().authentication = authentication

@@ -9,7 +9,7 @@ import jakarta.persistence.*
 import java.math.BigDecimal
 
 @Entity
-@Table(name = "bet_tickets")
+@Table(name = "bet_tickets", schema = "betting")
 class BetTicketEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -73,6 +73,9 @@ class BetTicketEntity(
     @Column(name = "settled_at")
     var settledAt: Long? = null,
     
+    @Column(name = "is_cashed_out")
+    var isCashedOut: Boolean = false,
+    
     @OneToMany(mappedBy = "ticket", cascade = [CascadeType.ALL], orphanRemoval = true, fetch = FetchType.LAZY)
     var selections: MutableList<BetSelectionEntity> = mutableListOf(),
     
@@ -102,6 +105,7 @@ class BetTicketEntity(
         systemDescription = systemDescription,
         placedAt = placedAt,
         settledAt = settledAt,
+        isCashedOut = isCashedOut,
         selections = selections.map { it.toDomain() },
         createdAt = createdAt,
         updatedAt = updatedAt
@@ -129,6 +133,7 @@ class BetTicketEntity(
                 systemDescription = ticket.systemDescription,
                 placedAt = ticket.placedAt,
                 settledAt = ticket.settledAt,
+                isCashedOut = ticket.isCashedOut,
                 createdAt = ticket.createdAt,
                 updatedAt = ticket.updatedAt
             )

@@ -45,6 +45,15 @@ class BetanoStrategy(
     }
     
     override fun parseResponse(responseBody: String): ParsedTicketData {
+        // Parser da Betano em desenvolvimento - a API não retorna bilhetes já realizados
+        throw UnsupportedOperationException(
+            "Parser da Betano em desenvolvimento. " +
+            "A API da Betano não disponibiliza endpoint público para consulta de bilhetes já realizados. " +
+            "Por favor, utilize outra casa de apostas ou aguarde atualizações."
+        )
+        
+        // Código original mantido para referência futura
+        @Suppress("UNREACHABLE_CODE")
         val root = objectMapper.readTree(responseBody)
         
         // Betano pode retornar dados em diferentes estruturas
@@ -181,11 +190,9 @@ class BetanoStrategy(
                     if (home.isNotEmpty() && away.isNotEmpty()) "$home x $away" else ""
                 }
             
-            val tournamentName = node.path("competitionName").asText()
-                .ifEmpty { node.path("competition").path("name").asText() }
-                .ifEmpty { node.path("leagueName").asText() }
-                .ifEmpty { node.path("tournament").asText() }
-                .takeIf { it.isNotEmpty() }
+            // Betano não usa o mesmo sistema de tournamentId que a Superbet
+            // Será necessário um mapeamento futuro para resolver o externalTournamentId
+            val externalTournamentId: Int? = null
             
             val marketType = node.path("marketName").asText()
                 .ifEmpty { node.path("market").path("name").asText() }
@@ -223,7 +230,7 @@ class BetanoStrategy(
                     .ifEmpty { node.path("id").asText() }
                     .takeIf { it.isNotEmpty() },
                 eventName = eventName,
-                tournamentName = tournamentName,
+                externalTournamentId = externalTournamentId,
                 marketType = marketType,
                 selection = selection,
                 odd = BigDecimal.valueOf(odd),

@@ -6,7 +6,7 @@ import jakarta.persistence.*
 import java.math.BigDecimal
 
 @Entity
-@Table(name = "bet_selections")
+@Table(name = "bet_selections", schema = "betting")
 class BetSelectionEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,9 +21,10 @@ class BetSelectionEntity(
     
     @Column(name = "event_name", nullable = false)
     var eventName: String = "",
-    
-    @Column(name = "tournament_name")
-    var tournamentName: String? = null,
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tournament_id")
+    var tournament: TournamentEntity? = null,
     
     @Column(name = "market_type", length = 100)
     var marketType: String? = null,
@@ -44,6 +45,12 @@ class BetSelectionEntity(
     @Column(name = "event_result", length = 100)
     var eventResult: String? = null,
     
+    @Column(name = "sport_id", length = 50)
+    var sportId: String? = null,
+    
+    @Column(name = "is_bet_builder")
+    var isBetBuilder: Boolean = false,
+    
     @Column(name = "created_at", nullable = false, updatable = false)
     val createdAt: Long = System.currentTimeMillis(),
     
@@ -55,30 +62,39 @@ class BetSelectionEntity(
         ticketId = ticket?.id ?: 0,
         externalSelectionId = externalSelectionId,
         eventName = eventName,
-        tournamentName = tournamentName,
+        tournamentId = tournament?.id,
+        tournamentName = tournament?.name,
         marketType = marketType,
         selection = selection,
         odd = odd,
         status = status,
         eventDate = eventDate,
         eventResult = eventResult,
+        sportId = sportId,
+        isBetBuilder = isBetBuilder,
         createdAt = createdAt,
         updatedAt = updatedAt
     )
-    
+
     companion object {
-        fun fromDomain(selection: BetSelection, ticketEntity: BetTicketEntity): BetSelectionEntity = BetSelectionEntity(
+        fun fromDomain(
+            selection: BetSelection,
+            ticketEntity: BetTicketEntity,
+            tournamentEntity: TournamentEntity? = null
+        ): BetSelectionEntity = BetSelectionEntity(
             id = selection.id,
             ticket = ticketEntity,
             externalSelectionId = selection.externalSelectionId,
             eventName = selection.eventName,
-            tournamentName = selection.tournamentName,
+            tournament = tournamentEntity,
             marketType = selection.marketType,
             selection = selection.selection,
             odd = selection.odd,
             status = selection.status,
             eventDate = selection.eventDate,
             eventResult = selection.eventResult,
+            sportId = selection.sportId,
+            isBetBuilder = selection.isBetBuilder,
             createdAt = selection.createdAt,
             updatedAt = selection.updatedAt
         )

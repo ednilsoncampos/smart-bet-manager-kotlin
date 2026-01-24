@@ -80,7 +80,10 @@ data class ParsedTicketData(
     val systemDescription: String? = null,
     val placedAt: Long? = null,
     val settledAt: Long? = null,
-    val selections: List<ParsedSelectionData>
+    val isCashedOut: Boolean = false,
+    val selections: List<ParsedSelectionData>,
+    /** Componentes das seleções (para Bet Builder) - mapa de selectionId para lista de componentes */
+    val selectionComponents: Map<String, List<ParsedSelectionComponentData>> = emptyMap()
 )
 
 /**
@@ -90,11 +93,26 @@ data class ParsedTicketData(
 data class ParsedSelectionData(
     val externalSelectionId: String?,
     val eventName: String,
-    val tournamentName: String?,
+    /** ID externo do torneio na API do provider (será resolvido para Tournament.id) */
+    val externalTournamentId: Int?,
     val marketType: String?,
     val selection: String,
     val odd: BigDecimal,
     val status: com.smartbet.domain.enum.SelectionStatus,
     val eventDate: Long?,
-    val eventResult: String?
+    val eventResult: String?,
+    /** ID do esporte - ex: "5" (Superbet), "FOOT" (Betano) */
+    val sportId: String? = null,
+    /** Indica se é uma aposta combinada (Bet Builder) */
+    val isBetBuilder: Boolean = false
+)
+
+/**
+ * Dados parseados de um componente de seleção (para Bet Builder).
+ */
+data class ParsedSelectionComponentData(
+    val marketId: String?,
+    val marketName: String,
+    val selectionName: String,
+    val status: com.smartbet.domain.enum.SelectionStatus
 )

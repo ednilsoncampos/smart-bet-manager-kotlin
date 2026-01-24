@@ -5,7 +5,7 @@ import com.smartbet.domain.entity.UserRole
 import jakarta.persistence.*
 
 @Entity
-@Table(name = "users")
+@Table(name = "users", schema = "core")
 class UserEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

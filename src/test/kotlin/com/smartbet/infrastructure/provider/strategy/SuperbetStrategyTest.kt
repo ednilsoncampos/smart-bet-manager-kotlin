@@ -5,6 +5,8 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.smartbet.domain.enum.BetType
 import com.smartbet.domain.enum.SelectionStatus
 import com.smartbet.domain.enum.TicketStatus
+import com.smartbet.infrastructure.provider.gateway.HttpGateway
+import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
@@ -14,14 +16,16 @@ import java.math.BigDecimal
 
 @DisplayName("SuperbetStrategy")
 class SuperbetStrategyTest {
-    
+
     private lateinit var strategy: SuperbetStrategy
     private lateinit var objectMapper: ObjectMapper
-    
+    private lateinit var httpGateway: HttpGateway
+
     @BeforeEach
     fun setup() {
         objectMapper = jacksonObjectMapper()
-        strategy = SuperbetStrategy(objectMapper)
+        httpGateway = mockk(relaxed = true)
+        strategy = SuperbetStrategy(objectMapper, httpGateway)
     }
     
     @Nested
@@ -107,6 +111,7 @@ class SuperbetStrategyTest {
         @Test
         @DisplayName("deve parsear resposta de bilhete simples ganho")
         fun shouldParseWonSingleTicket() {
+            // Bilhete simples SEM eventComponents (evento tradicional)
             val json = """
             {
                 "ticketId": "TICKET-001",
@@ -129,23 +134,14 @@ class SuperbetStrategyTest {
                         "date": "2024-01-15T16:00:00Z",
                         "status": "win",
                         "coefficient": 2.50,
+                        "market": {
+                            "name": "Resultado Final"
+                        },
                         "odd": {
                             "coefficient": 2.50,
-                            "oddUuid": "uuid-001"
-                        },
-                        "eventComponents": [
-                            {
-                                "market": {
-                                    "name": "Resultado Final"
-                                },
-                                "oddComponent": {
-                                    "name": "Flamengo",
-                                    "oddUuid": "uuid-comp-001",
-                                    "oddStatus": "WIN"
-                                },
-                                "status": "WIN"
-                            }
-                        ]
+                            "oddUuid": "uuid-001",
+                            "name": "Flamengo"
+                        }
                     }
                 ]
             }
@@ -167,11 +163,13 @@ class SuperbetStrategyTest {
             assertEquals("Resultado Final", selection.marketType)
             assertEquals("Flamengo", selection.selection)
             assertEquals(SelectionStatus.WON, selection.status)
+            assertFalse(selection.isBetBuilder)
         }
         
         @Test
         @DisplayName("deve parsear resposta de bilhete múltiplo perdido")
         fun shouldParseLostMultipleTicket() {
+            // Bilhete múltiplo com eventos SEM eventComponents (tradicional)
             val json = """
             {
                 "ticketId": "TICKET-002",
@@ -191,30 +189,22 @@ class SuperbetStrategyTest {
                         "name": ["Time A", "Time B"],
                         "status": "win",
                         "coefficient": 2.00,
-                        "eventComponents": [
-                            {
-                                "market": { "name": "Resultado" },
-                                "oddComponent": {
-                                    "name": "Time A",
-                                    "oddStatus": "WIN"
-                                }
-                            }
-                        ]
+                        "market": { "name": "Resultado" },
+                        "odd": {
+                            "oddUuid": "uuid-001",
+                            "name": "Time A"
+                        }
                     },
                     {
                         "eventId": "EVT-002",
                         "name": ["Time C", "Time D"],
                         "status": "lose",
                         "coefficient": 2.50,
-                        "eventComponents": [
-                            {
-                                "market": { "name": "Resultado" },
-                                "oddComponent": {
-                                    "name": "Time C",
-                                    "oddStatus": "LOST"
-                                }
-                            }
-                        ]
+                        "market": { "name": "Resultado" },
+                        "odd": {
+                            "oddUuid": "uuid-002",
+                            "name": "Time C"
+                        }
                     }
                 ]
             }
@@ -227,6 +217,9 @@ class SuperbetStrategyTest {
             assertEquals(2, result.selections.size)
             assertEquals(SelectionStatus.WON, result.selections[0].status)
             assertEquals(SelectionStatus.LOST, result.selections[1].status)
+            // Eventos sem eventComponents não são Bet Builder
+            assertFalse(result.selections[0].isBetBuilder)
+            assertFalse(result.selections[1].isBetBuilder)
         }
         
         @Test
@@ -243,6 +236,7 @@ class SuperbetStrategyTest {
                 "win": {
                     "potentialTotalWinnings": 300.00,
                     "payoff": 150.00,
+                    "totalWinnings": 150.00,
                     "isCashedOut": true
                 },
                 "events": [
@@ -251,15 +245,11 @@ class SuperbetStrategyTest {
                         "name": ["Time X", "Time Y"],
                         "status": "cashout",
                         "coefficient": 3.00,
-                        "eventComponents": [
-                            {
-                                "market": { "name": "Empate" },
-                                "oddComponent": {
-                                    "name": "Empate",
-                                    "oddStatus": "CASHOUT"
-                                }
-                            }
-                        ]
+                        "market": { "name": "Empate" },
+                        "odd": {
+                            "oddUuid": "uuid-cashout",
+                            "name": "Empate"
+                        }
                     }
                 ]
             }
@@ -269,6 +259,7 @@ class SuperbetStrategyTest {
             
             assertEquals(TicketStatus.CASHOUT, result.ticketStatus)
             assertEquals(BigDecimal("150.0"), result.actualPayout)
+            assertTrue(result.isCashedOut)
         }
         
         @Test
@@ -291,15 +282,11 @@ class SuperbetStrategyTest {
                         "name": ["Time Futuro", "Adversário"],
                         "status": "pending",
                         "coefficient": 2.00,
-                        "eventComponents": [
-                            {
-                                "market": { "name": "Resultado" },
-                                "oddComponent": {
-                                    "name": "Time Futuro",
-                                    "oddStatus": "PENDING"
-                                }
-                            }
-                        ]
+                        "market": { "name": "Resultado" },
+                        "odd": {
+                            "oddUuid": "uuid-open",
+                            "name": "Time Futuro"
+                        }
                     }
                 ]
             }
@@ -310,11 +297,13 @@ class SuperbetStrategyTest {
             assertEquals(TicketStatus.OPEN, result.ticketStatus)
             assertNull(result.actualPayout)
             assertEquals(SelectionStatus.PENDING, result.selections[0].status)
+            assertFalse(result.isCashedOut)
         }
         
         @Test
         @DisplayName("deve parsear resposta de bilhete sistema")
         fun shouldParseSystemTicket() {
+            // Bilhete sistema com eventos SEM eventComponents (tradicional)
             val json = """
             {
                 "ticketId": "TICKET-005",
@@ -334,48 +323,36 @@ class SuperbetStrategyTest {
                 },
                 "events": [
                     {
+                        "eventId": "EVT-001",
                         "name": ["Time A", "Time B"],
                         "status": "win",
                         "coefficient": 2.00,
-                        "eventComponents": [
-                            {
-                                "market": { "name": "Resultado" },
-                                "oddComponent": { "name": "Time A", "oddStatus": "WIN" }
-                            }
-                        ]
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-001", "name": "Time A" }
                     },
                     {
+                        "eventId": "EVT-002",
                         "name": ["Time C", "Time D"],
                         "status": "win",
                         "coefficient": 2.00,
-                        "eventComponents": [
-                            {
-                                "market": { "name": "Resultado" },
-                                "oddComponent": { "name": "Time C", "oddStatus": "WIN" }
-                            }
-                        ]
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-002", "name": "Time C" }
                     },
                     {
+                        "eventId": "EVT-003",
                         "name": ["Time E", "Time F"],
                         "status": "win",
                         "coefficient": 2.00,
-                        "eventComponents": [
-                            {
-                                "market": { "name": "Resultado" },
-                                "oddComponent": { "name": "Time E", "oddStatus": "WIN" }
-                            }
-                        ]
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-003", "name": "Time E" }
                     },
                     {
+                        "eventId": "EVT-004",
                         "name": ["Time G", "Time H"],
                         "status": "lose",
                         "coefficient": 2.50,
-                        "eventComponents": [
-                            {
-                                "market": { "name": "Resultado" },
-                                "oddComponent": { "name": "Time G", "oddStatus": "LOST" }
-                            }
-                        ]
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-004", "name": "Time G" }
                     }
                 ]
             }
@@ -390,8 +367,8 @@ class SuperbetStrategyTest {
         }
         
         @Test
-        @DisplayName("deve parsear evento com múltiplos eventComponents")
-        fun shouldParseEventWithMultipleComponents() {
+        @DisplayName("deve parsear evento com múltiplos eventComponents como Bet Builder")
+        fun shouldParseEventWithMultipleComponentsAsBetBuilder() {
             val json = """
             {
                 "ticketId": "TICKET-006",
@@ -406,10 +383,12 @@ class SuperbetStrategyTest {
                 },
                 "events": [
                     {
+                        "eventId": "EVT-006",
                         "name": ["Bayern Munich", "Wolfsburg"],
                         "date": "2024-01-15T16:30:00Z",
                         "status": "win",
                         "coefficient": 1.50,
+                        "odd": { "oddUuid": "uuid-bet-builder" },
                         "eventComponents": [
                             {
                                 "market": { "name": "Total de Gols" },
@@ -435,17 +414,200 @@ class SuperbetStrategyTest {
             
             val result = strategy.parseResponse(json)
             
-            assertEquals(2, result.selections.size)
+            // Um evento com múltiplos eventComponents gera 1 seleção Bet Builder
+            assertEquals(1, result.selections.size)
             
-            val selection1 = result.selections[0]
-            assertEquals("Bayern Munich x Wolfsburg", selection1.eventName)
-            assertEquals("Total de Gols", selection1.marketType)
-            assertEquals("Mais de 2.5", selection1.selection)
+            val selection = result.selections[0]
+            assertEquals("Bayern Munich x Wolfsburg", selection.eventName)
+            assertEquals("Criar Aposta", selection.marketType)
+            assertTrue(selection.isBetBuilder)
+            // O nome da seleção combina todos os mercados
+            assertTrue(selection.selection.contains("Total de Gols"))
+            assertTrue(selection.selection.contains("Ambas Marcam"))
             
-            val selection2 = result.selections[1]
-            assertEquals("Bayern Munich x Wolfsburg", selection2.eventName)
-            assertEquals("Ambas Marcam", selection2.marketType)
-            assertEquals("Sim", selection2.selection)
+            // Verifica que os components foram extraídos
+            val components = result.selectionComponents["uuid-bet-builder"]
+            assertNotNull(components)
+            assertEquals(2, components!!.size)
+            assertEquals("Total de Gols", components[0].marketName)
+            assertEquals("Mais de 2.5", components[0].selectionName)
+            assertEquals("Ambas Marcam", components[1].marketName)
+            assertEquals("Sim", components[1].selectionName)
+        }
+    }
+
+    @Nested
+    @DisplayName("Novos campos: sportId e isBetBuilder")
+    inner class NewFieldsTests {
+        
+        @Test
+        @DisplayName("deve extrair sportId do evento")
+        fun shouldExtractSportIdFromEvent() {
+            val json = """
+            {
+                "ticketId": "TICKET-SPORT-001",
+                "status": "win",
+                "coefficient": 2.00,
+                "payment": { "stake": 100.00 },
+                "win": { "potentialTotalWinnings": 200.00, "payoff": 200.00 },
+                "events": [
+                    {
+                        "eventId": "EVT-SPORT-001",
+                        "name": ["Flamengo", "Palmeiras"],
+                        "status": "win",
+                        "sportId": "5",
+                        "tournamentId": "245",
+                        "coefficient": 2.00,
+                        "odd": { "oddUuid": "uuid-sport-001" },
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado Final" },
+                                "oddComponent": { "name": "Flamengo", "oddStatus": "WIN" }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            assertEquals(1, result.selections.size)
+            assertEquals("5", result.selections[0].sportId)
+            // externalTournamentId é extraído do JSON
+            assertEquals(245, result.selections[0].externalTournamentId)
+            // Com eventComponents, é Bet Builder
+            assertTrue(result.selections[0].isBetBuilder)
+        }
+        
+        @Test
+        @DisplayName("deve detectar isBetBuilder quando há múltiplos eventComponents")
+        fun shouldDetectBetBuilderWithMultipleComponents() {
+            val json = """
+            {
+                "ticketId": "TICKET-BB-001",
+                "status": "win",
+                "coefficient": 3.50,
+                "payment": { "stake": 50.00 },
+                "win": { "potentialTotalWinnings": 175.00, "payoff": 175.00 },
+                "events": [
+                    {
+                        "eventId": "EVT-BB-001",
+                        "name": ["Bayern Munich", "Wolfsburg"],
+                        "status": "win",
+                        "sportId": "5",
+                        "tournamentId": "245",
+                        "coefficient": 3.50,
+                        "odd": { "oddUuid": "uuid-bb-001" },
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Total de Gols" },
+                                "oddComponent": { "name": "Mais de 2.5", "oddStatus": "WIN" }
+                            },
+                            {
+                                "market": { "name": "Ambas Marcam" },
+                                "oddComponent": { "name": "Sim", "oddStatus": "WIN" }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            // Um evento com múltiplos components gera 1 seleção marcada como Bet Builder
+            assertEquals(1, result.selections.size)
+            assertTrue(result.selections[0].isBetBuilder)
+            assertEquals("5", result.selections[0].sportId)
+            // externalTournamentId é extraído do JSON
+            assertEquals(245, result.selections[0].externalTournamentId)
+            assertEquals("Criar Aposta", result.selections[0].marketType)
+            assertTrue(result.selections[0].selection.contains("Total de Gols"))
+            assertTrue(result.selections[0].selection.contains("Ambas Marcam"))
+            
+            // Verifica que os components foram extraídos
+            assertEquals(1, result.selectionComponents.size)
+            val components = result.selectionComponents["uuid-bb-001"]
+            assertNotNull(components)
+            assertEquals(2, components!!.size)
+        }
+        
+        @Test
+        @DisplayName("deve tratar evento com 1 eventComponent como Bet Builder simples")
+        fun shouldTreatSingleComponentAsBetBuilder() {
+            // Quando eventComponents existe e não está vazio, é tratado como Bet Builder
+            // mesmo com apenas 1 componente (pois a estrutura indica Bet Builder)
+            val json = """
+            {
+                "ticketId": "TICKET-SINGLE-001",
+                "status": "win",
+                "coefficient": 2.00,
+                "payment": { "stake": 100.00 },
+                "win": { "potentialTotalWinnings": 200.00, "payoff": 200.00 },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "sportId": "5",
+                        "coefficient": 2.00,
+                        "odd": { "oddUuid": "uuid-single-001" },
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado Final" },
+                                "oddComponent": { "name": "Time A", "oddStatus": "WIN" }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            assertEquals(1, result.selections.size)
+            // Com eventComponents presente, é tratado como Bet Builder
+            assertTrue(result.selections[0].isBetBuilder)
+            assertEquals("Criar Aposta", result.selections[0].marketType)
+            assertEquals("5", result.selections[0].sportId)
+        }
+        
+        @Test
+        @DisplayName("deve manter sportId nulo quando não presente no JSON")
+        fun shouldKeepSportIdNullWhenNotPresent() {
+            val json = """
+            {
+                "ticketId": "TICKET-NO-SPORT",
+                "status": "win",
+                "coefficient": 2.00,
+                "payment": { "stake": 100.00 },
+                "win": { "potentialTotalWinnings": 200.00, "payoff": 200.00 },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "coefficient": 2.00,
+                        "odd": { "oddUuid": "uuid-no-sport" },
+                        "eventComponents": [
+                            {
+                                "market": { "name": "Resultado" },
+                                "oddComponent": { "name": "Time A", "oddStatus": "WIN" }
+                            }
+                        ]
+                    }
+                ]
+            }
+            """.trimIndent()
+            
+            val result = strategy.parseResponse(json)
+            
+            assertNull(result.selections[0].sportId)
+            // Sem tournamentId no JSON, externalTournamentId é null
+            assertNull(result.selections[0].externalTournamentId)
+            // Ainda é Bet Builder pois tem eventComponents
+            assertTrue(result.selections[0].isBetBuilder)
         }
     }
 }

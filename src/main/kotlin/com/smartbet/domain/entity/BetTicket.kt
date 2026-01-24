@@ -69,6 +69,9 @@ data class BetTicket(
     /** Timestamp em que o bilhete foi resolvido (milissegundos desde epoch UTC) */
     val settledAt: Long? = null,
     
+    /** Indica se o bilhete foi encerrado via cashout */
+    val isCashedOut: Boolean = false,
+    
     /** Seleções do bilhete */
     val selections: List<BetSelection> = emptyList(),
     

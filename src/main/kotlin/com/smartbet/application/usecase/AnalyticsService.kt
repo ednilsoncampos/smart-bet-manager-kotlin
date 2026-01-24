@@ -58,9 +58,18 @@ class AnalyticsService(
             BigDecimal.ZERO
         }
         
-        val averageOdd = if (allTickets.isNotEmpty()) {
-            allTickets.sumOf { it.totalOdd }
-                .divide(BigDecimal(allTickets.size), 4, RoundingMode.HALF_UP)
+        // Calcula a mediana das odds (mais resistente a outliers)
+        val medianOdd = if (allTickets.isNotEmpty()) {
+            val sortedOdds = allTickets.map { it.totalOdd }.sorted()
+            val size = sortedOdds.size
+            if (size % 2 == 0) {
+                // Média dos dois valores centrais
+                (sortedOdds[size / 2 - 1] + sortedOdds[size / 2])
+                    .divide(BigDecimal(2), 4, RoundingMode.HALF_UP)
+            } else {
+                // Valor central
+                sortedOdds[size / 2]
+            }
         } else {
             BigDecimal.ZERO
         }
@@ -83,7 +92,7 @@ class AnalyticsService(
             totalReturns = totalReturns,
             profitLoss = profitLoss,
             roi = roi,
-            averageOdd = averageOdd,
+            medianOdd = medianOdd,
             averageStake = averageStake
         )
     }
@@ -150,6 +159,7 @@ class AnalyticsService(
     
     /**
      * Retorna a performance por casa de apostas.
+     * Inclui contagem detalhada de todos os status financeiros.
      */
     fun getPerformanceByProvider(userId: Long): List<PerformanceByProviderResponse> {
         val pageable = PageRequest.of(0, Int.MAX_VALUE)
@@ -163,13 +173,16 @@ class AnalyticsService(
                 val provider = providers[providerId]
                 val totalBets = tickets.size.toLong()
                 
-                val wins = tickets.count { 
-                    it.financialStatus in listOf(FinancialStatus.FULL_WIN, FinancialStatus.PARTIAL_WIN) 
-                }.toLong()
+                // Contagem detalhada por status financeiro
+                val fullWins = tickets.count { it.financialStatus == FinancialStatus.FULL_WIN }.toLong()
+                val partialWins = tickets.count { it.financialStatus == FinancialStatus.PARTIAL_WIN }.toLong()
+                val totalLosses = tickets.count { it.financialStatus == FinancialStatus.TOTAL_LOSS }.toLong()
+                val partialLosses = tickets.count { it.financialStatus == FinancialStatus.PARTIAL_LOSS }.toLong()
+                val breakEven = tickets.count { it.financialStatus == FinancialStatus.BREAK_EVEN }.toLong()
                 
-                val losses = tickets.count { 
-                    it.financialStatus in listOf(FinancialStatus.TOTAL_LOSS, FinancialStatus.PARTIAL_LOSS) 
-                }.toLong()
+                // Totais agregados
+                val wins = fullWins + partialWins
+                val losses = totalLosses + partialLosses
                 
                 val winRate = if (totalBets > 0) {
                     BigDecimal(wins)
@@ -196,6 +209,11 @@ class AnalyticsService(
                     totalBets = totalBets,
                     wins = wins,
                     losses = losses,
+                    fullWins = fullWins,
+                    partialWins = partialWins,
+                    totalLosses = totalLosses,
+                    partialLosses = partialLosses,
+                    breakEven = breakEven,
                     winRate = winRate,
                     profitLoss = profitLoss,
                     roi = roi
