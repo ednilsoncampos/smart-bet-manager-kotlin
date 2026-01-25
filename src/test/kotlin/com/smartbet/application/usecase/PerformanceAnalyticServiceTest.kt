@@ -5,6 +5,7 @@ import com.smartbet.domain.enum.FinancialStatus
 import com.smartbet.domain.enum.TicketStatus
 import com.smartbet.infrastructure.persistence.entity.BetTicketEntity
 import com.smartbet.infrastructure.persistence.entity.BettingProviderEntity
+import com.smartbet.infrastructure.persistence.repository.BetSelectionComponentRepository
 import com.smartbet.infrastructure.persistence.repository.BetSelectionRepository
 import com.smartbet.infrastructure.persistence.repository.BetTicketRepository
 import com.smartbet.infrastructure.persistence.repository.BettingProviderRepository
@@ -21,18 +22,25 @@ import java.math.BigDecimal
 
 @DisplayName("PerformanceAnalyticService")
 class PerformanceAnalyticServiceTest {
-    
+
     private lateinit var ticketRepository: BetTicketRepository
     private lateinit var selectionRepository: BetSelectionRepository
+    private lateinit var selectionComponentRepository: BetSelectionComponentRepository
     private lateinit var providerRepository: BettingProviderRepository
     private lateinit var performanceAnalyticService: PerformanceAnalyticService
-    
+
     @BeforeEach
     fun setup() {
         ticketRepository = mockk()
         selectionRepository = mockk()
+        selectionComponentRepository = mockk()
         providerRepository = mockk()
-        performanceAnalyticService = PerformanceAnalyticService(ticketRepository, selectionRepository, providerRepository)
+        performanceAnalyticService = PerformanceAnalyticService(
+            ticketRepository,
+            selectionRepository,
+            selectionComponentRepository,
+            providerRepository
+        )
     }
     
     private fun createTicket(
@@ -73,9 +81,9 @@ class PerformanceAnalyticServiceTest {
         @DisplayName("deve calcular mediana corretamente com número ímpar de elementos")
         fun shouldCalculateMedianWithOddNumberOfElements() {
             val tickets = listOf(
-                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("1.50"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("50")),
-                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("3.00"), actualPayout = BigDecimal("300"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("200"))
+                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("1.50"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("50")),
+                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
+                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("3.00"), actualPayout = BigDecimal("300"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("200"))
             )
             
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
@@ -90,10 +98,10 @@ class PerformanceAnalyticServiceTest {
         @DisplayName("deve calcular mediana corretamente com número par de elementos")
         fun shouldCalculateMedianWithEvenNumberOfElements() {
             val tickets = listOf(
-                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("1.50"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("50")),
-                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("3.00"), actualPayout = BigDecimal("300"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("200")),
-                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("4.00"), actualPayout = BigDecimal("400"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("300"))
+                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("1.50"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("50")),
+                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
+                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("3.00"), actualPayout = BigDecimal("300"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("200")),
+                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("4.00"), actualPayout = BigDecimal("400"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("300"))
             )
             
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
@@ -119,10 +127,10 @@ class PerformanceAnalyticServiceTest {
         @DisplayName("deve ser resistente a outliers (odds muito altas)")
         fun shouldBeResistantToOutliers() {
             val tickets = listOf(
-                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("1.50"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("50")),
-                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("2.50"), actualPayout = BigDecimal("250"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("150")),
-                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("100.00"), actualPayout = BigDecimal("10000"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("9900")) // Outlier
+                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("1.50"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("50")),
+                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
+                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("2.50"), actualPayout = BigDecimal("250"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("150")),
+                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("100.00"), actualPayout = BigDecimal("10000"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("9900")) // Outlier
             )
             
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
@@ -138,9 +146,9 @@ class PerformanceAnalyticServiceTest {
         @DisplayName("deve contar todos os status financeiros detalhados")
         fun shouldCountAllDetailedFinancialStatuses() {
             val tickets = listOf(
-                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
+                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
                 createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.PARTIAL_WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
-                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0")),
+                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0")),
                 createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.PARTIAL_LOSS, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
                 createTicket(5, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("0"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.TOTAL_LOSS, profitLoss = BigDecimal("-100")),
                 createTicket(6, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = null, ticketStatus = TicketStatus.OPEN, financialStatus = FinancialStatus.PENDING, profitLoss = BigDecimal("0"))
@@ -173,11 +181,11 @@ class PerformanceAnalyticServiceTest {
             val provider = BettingProviderEntity(id = 1L, name = "Superbet", slug = "superbet")
             
             val tickets = listOf(
-                createTicket(1, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
+                createTicket(1, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
                 createTicket(2, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.PARTIAL_WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
                 createTicket(3, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("0"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.TOTAL_LOSS, profitLoss = BigDecimal("-100")),
                 createTicket(4, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.PARTIAL_LOSS, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
-                createTicket(5, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0"))
+                createTicket(5, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0"))
             )
             
             every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
@@ -204,7 +212,7 @@ class PerformanceAnalyticServiceTest {
             val provider = BettingProviderEntity(id = 1L, name = "Superbet", slug = "superbet")
             
             val tickets = listOf(
-                createTicket(1, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WON, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
+                createTicket(1, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
                 createTicket(2, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = null, ticketStatus = TicketStatus.OPEN, financialStatus = FinancialStatus.PENDING, profitLoss = BigDecimal("0"))
             )
             

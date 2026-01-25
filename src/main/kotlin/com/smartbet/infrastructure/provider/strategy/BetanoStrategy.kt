@@ -167,7 +167,7 @@ class BetanoStrategy(
     private fun mapTicketStatus(status: String): TicketStatus {
         return when {
             status.contains("open") || status.contains("pending") || status.contains("active") -> TicketStatus.OPEN
-            status.contains("won") || status.contains("win") || status.contains("ganhou") -> TicketStatus.WON
+            status.contains("won") || status.contains("win") || status.contains("ganhou") -> TicketStatus.WIN
             status.contains("lost") || status.contains("lose") || status.contains("perdeu") -> TicketStatus.LOST
             status.contains("void") || status.contains("cancelled") || status.contains("anulad") -> TicketStatus.VOID
             status.contains("cashout") || status.contains("cashed") -> TicketStatus.CASHOUT

@@ -218,8 +218,7 @@ class TicketService(
     fun listTickets(userId: Long, request: ListTicketsRequest): PagedResponse<TicketResponse> {
         val pageable = PageRequest.of(
             request.page, 
-            request.pageSize, 
-            Sort.by(Sort.Direction.DESC, "createdAt")
+            request.pageSize
         )
         
         val page = ticketRepository.findByFilters(

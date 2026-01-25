@@ -117,9 +117,20 @@ class SuperbetStrategy(
         // Cashout - verifica se foi feito cashout
         val isCashedOut = winNode.path("isCashedOut").asBoolean(false)
         
-        // Status do bilhete
+        // Status do bilhete - precisa considerar os valores financeiros para status "win"
         val statusStr = data.path("status").asText().lowercase()
-        val ticketStatus = mapTicketStatus(statusStr)
+
+        // totalWinnings com fallback para payoff (alguns JSONs usam payoff em vez de totalWinnings)
+        val totalWinningsForStatus = winNode.path("totalWinnings").asDouble()
+            .takeIf { it > 0 }
+            ?: winNode.path("payoff").asDouble()
+
+        val ticketStatus = determineTicketStatus(
+            statusStr = statusStr,
+            stake = stake,
+            totalWinnings = totalWinningsForStatus,
+            estimated = winNode.path("estimated").asDouble()
+        )
         
         // Tipo de aposta - verifica se tem system
         val betType = determineBetType(data)
@@ -198,12 +209,47 @@ class SuperbetStrategy(
         }
     }
     
+    /**
+     * Determina o status do bilhete considerando os valores financeiros.
+     *
+     * Para status finalizados (win/lost), analisa totalWinnings vs stake e estimated
+     * para determinar o status real: ganho total, ganho parcial, perda parcial ou perda total.
+     *
+     * Regras:
+     * - totalWinnings <= 0: LOST (perda total)
+     * - totalWinnings >= estimated: WIN (ganho total)
+     * - totalWinnings > stake: PARTIAL_WIN (ganho parcial)
+     * - totalWinnings < stake: PARTIAL_LOSS (perda parcial)
+     * - totalWinnings == stake: WIN (break even, retorno do stake)
+     */
+    private fun determineTicketStatus(
+        statusStr: String,
+        stake: Double,
+        totalWinnings: Double,
+        estimated: Double
+    ): TicketStatus {
+        // Para status finalizados (win/lost), analisa os valores financeiros
+        if (statusStr == "win" || statusStr.contains("won") ||
+            statusStr == "lost" || statusStr.contains("lose")) {
+            return when {
+                totalWinnings <= 0 -> TicketStatus.LOST              // Perda total
+                totalWinnings >= estimated -> TicketStatus.WIN       // Ganho total
+                totalWinnings > stake -> TicketStatus.PARTIAL_WIN    // Ganho parcial
+                totalWinnings < stake -> TicketStatus.PARTIAL_LOSS   // Perda parcial
+                else -> TicketStatus.WIN // totalWinnings == stake (break even)
+            }
+        }
+
+        // Para outros status (open, void, cashout), usa o mapeamento padrão
+        return mapTicketStatus(statusStr)
+    }
+
     private fun mapTicketStatus(status: String): TicketStatus {
         return when {
             status.contains("open") || status.contains("pending") || status.contains("active") -> TicketStatus.OPEN
             status.contains("partial_win") || status.contains("partialwin") -> TicketStatus.PARTIAL_WIN
             status.contains("partial_loss") || status.contains("partialloss") -> TicketStatus.PARTIAL_LOSS
-            status.contains("won") || status == "win" -> TicketStatus.WON
+            status.contains("won") || status == "win" -> TicketStatus.WIN
             status.contains("lost") || status == "lose" -> TicketStatus.LOST
             status.contains("void") || status.contains("cancelled") -> TicketStatus.VOID
             status.contains("cashout") || status.contains("cashed") -> TicketStatus.CASHOUT

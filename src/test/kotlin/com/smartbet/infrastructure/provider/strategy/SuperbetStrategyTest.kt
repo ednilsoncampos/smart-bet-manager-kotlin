@@ -155,7 +155,7 @@ class SuperbetStrategyTest {
             assertEquals(BigDecimal("2.5"), result.totalOdd)
             assertEquals(BigDecimal("250.0"), result.potentialPayout)
             assertEquals(BigDecimal("250.0"), result.actualPayout)
-            assertEquals(TicketStatus.WON, result.ticketStatus)
+            assertEquals(TicketStatus.WIN, result.ticketStatus)
             assertEquals(1, result.selections.size)
             
             val selection = result.selections[0]
@@ -362,7 +362,7 @@ class SuperbetStrategyTest {
             
             assertEquals(BetType.SYSTEM, result.betType)
             assertEquals("3/4", result.systemDescription)
-            assertEquals(TicketStatus.WON, result.ticketStatus)
+            assertEquals(TicketStatus.WIN, result.ticketStatus)
             assertEquals(4, result.selections.size)
         }
         
@@ -433,6 +433,222 @@ class SuperbetStrategyTest {
             assertEquals("Mais de 2.5", components[0].selectionName)
             assertEquals("Ambas Marcam", components[1].marketName)
             assertEquals("Sim", components[1].selectionName)
+        }
+    }
+
+    @Nested
+    @DisplayName("determineTicketStatus() - Status baseado em valores financeiros")
+    inner class DetermineTicketStatusTests {
+
+        @Test
+        @DisplayName("deve retornar LOST quando status é 'lost' e totalWinnings é zero")
+        fun shouldReturnLostWhenStatusIsLostAndTotalWinningsIsZero() {
+            val json = """
+            {
+                "ticketId": "TICKET-LOST-001",
+                "status": "lost",
+                "coefficient": 2.50,
+                "payment": { "stake": 100.00 },
+                "win": {
+                    "potentialTotalWinnings": 250.00,
+                    "totalWinnings": 0,
+                    "payoff": 0
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time A", "Time B"],
+                        "status": "lost",
+                        "coefficient": 2.50,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-001", "name": "Time A" }
+                    }
+                ]
+            }
+            """.trimIndent()
+
+            val result = strategy.parseResponse(json)
+
+            assertEquals(TicketStatus.LOST, result.ticketStatus)
+        }
+
+        @Test
+        @DisplayName("deve retornar PARTIAL_WIN quando status é 'lost' mas totalWinnings > stake (sistema)")
+        fun shouldReturnPartialWinWhenStatusIsLostButHasPartialReturn() {
+            // Em apostas sistema, pode haver retorno parcial mesmo com status "lost"
+            val json = """
+            {
+                "ticketId": "TICKET-PARTIAL-001",
+                "status": "lost",
+                "coefficient": 10.00,
+                "system": { "selected": [3], "count": 4 },
+                "payment": { "stake": 100.00 },
+                "win": {
+                    "potentialTotalWinnings": 1000.00,
+                    "estimated": 1000.00,
+                    "totalWinnings": 150.00,
+                    "payoff": 150.00
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "coefficient": 2.00,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-001", "name": "Time A" }
+                    },
+                    {
+                        "eventId": "EVT-002",
+                        "name": ["Time C", "Time D"],
+                        "status": "lost",
+                        "coefficient": 2.00,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-002", "name": "Time C" }
+                    },
+                    {
+                        "eventId": "EVT-003",
+                        "name": ["Time E", "Time F"],
+                        "status": "lost",
+                        "coefficient": 2.50,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-003", "name": "Time E" }
+                    },
+                    {
+                        "eventId": "EVT-004",
+                        "name": ["Time G", "Time H"],
+                        "status": "lost",
+                        "coefficient": 2.00,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-004", "name": "Time G" }
+                    }
+                ]
+            }
+            """.trimIndent()
+
+            val result = strategy.parseResponse(json)
+
+            assertEquals(TicketStatus.PARTIAL_WIN, result.ticketStatus)
+            assertEquals(BigDecimal("150.0"), result.actualPayout)
+        }
+
+        @Test
+        @DisplayName("deve retornar PARTIAL_LOSS quando status é 'lost' mas totalWinnings > 0 e < stake")
+        fun shouldReturnPartialLossWhenStatusIsLostButHasSmallReturn() {
+            val json = """
+            {
+                "ticketId": "TICKET-PARTIAL-LOSS-001",
+                "status": "lost",
+                "coefficient": 5.00,
+                "system": { "selected": [2], "count": 3 },
+                "payment": { "stake": 100.00 },
+                "win": {
+                    "potentialTotalWinnings": 500.00,
+                    "estimated": 500.00,
+                    "totalWinnings": 50.00,
+                    "payoff": 50.00
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "coefficient": 2.00,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-001", "name": "Time A" }
+                    },
+                    {
+                        "eventId": "EVT-002",
+                        "name": ["Time C", "Time D"],
+                        "status": "lost",
+                        "coefficient": 2.50,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-002", "name": "Time C" }
+                    },
+                    {
+                        "eventId": "EVT-003",
+                        "name": ["Time E", "Time F"],
+                        "status": "lost",
+                        "coefficient": 1.00,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-003", "name": "Time E" }
+                    }
+                ]
+            }
+            """.trimIndent()
+
+            val result = strategy.parseResponse(json)
+
+            assertEquals(TicketStatus.PARTIAL_LOSS, result.ticketStatus)
+            assertEquals(BigDecimal("50.0"), result.actualPayout)
+        }
+
+        @Test
+        @DisplayName("deve retornar WIN quando totalWinnings >= estimated")
+        fun shouldReturnWinWhenTotalWinningsEqualsOrExceedsEstimated() {
+            val json = """
+            {
+                "ticketId": "TICKET-WIN-001",
+                "status": "win",
+                "coefficient": 2.50,
+                "payment": { "stake": 100.00 },
+                "win": {
+                    "potentialTotalWinnings": 250.00,
+                    "estimated": 250.00,
+                    "totalWinnings": 250.00,
+                    "payoff": 250.00
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "coefficient": 2.50,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-001", "name": "Time A" }
+                    }
+                ]
+            }
+            """.trimIndent()
+
+            val result = strategy.parseResponse(json)
+
+            assertEquals(TicketStatus.WIN, result.ticketStatus)
+        }
+
+        @Test
+        @DisplayName("deve usar payoff como fallback quando totalWinnings não está presente")
+        fun shouldUsePayoffAsFallbackWhenTotalWinningsNotPresent() {
+            val json = """
+            {
+                "ticketId": "TICKET-PAYOFF-001",
+                "status": "win",
+                "coefficient": 2.00,
+                "payment": { "stake": 100.00 },
+                "win": {
+                    "potentialTotalWinnings": 200.00,
+                    "payoff": 200.00
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time A", "Time B"],
+                        "status": "win",
+                        "coefficient": 2.00,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-001", "name": "Time A" }
+                    }
+                ]
+            }
+            """.trimIndent()
+
+            val result = strategy.parseResponse(json)
+
+            // Deve usar payoff (200) como totalWinnings e comparar com stake (100)
+            // 200 > 100, então é WIN ou PARTIAL_WIN dependendo do estimated
+            // Como estimated não está presente (0), e totalWinnings (200) > stake (100), é PARTIAL_WIN
+            // Mas como estimated é 0 e totalWinnings >= estimated, deveria ser WIN
+            assertEquals(TicketStatus.WIN, result.ticketStatus)
         }
     }
 

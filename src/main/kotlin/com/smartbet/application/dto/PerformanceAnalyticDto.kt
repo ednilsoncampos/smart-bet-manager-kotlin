@@ -36,6 +36,8 @@ data class OverallPerformanceResponse(
 
 data class PerformanceByTournamentResponse(
     val tournamentName: String,
+    /** Nome local/país do torneio */
+    val tournamentLocalName: String? = null,
     val totalBets: Long,
     /** Vitórias totais (sem erros) */
     val fullWins: Long,
@@ -71,6 +73,27 @@ data class PerformanceByMarketResponse(
     val wins: Long,
     /** Total de derrotas (TOTAL_LOSS + PARTIAL_LOSS) */
     val losses: Long,
+    val winRate: BigDecimal,
+    /** Componentes individuais do Bet Builder (apenas quando marketType = "Criar Aposta") */
+    val betBuilderComponents: List<BetBuilderComponentStats>? = null
+)
+
+/**
+ * Estatísticas de um componente individual do Bet Builder.
+ * Agrupa por selectionName (ex: "Ambas Marcam - Sim", "Mais de 0.5 Gols - Time A").
+ */
+data class BetBuilderComponentStats(
+    /** Nome do mercado do componente */
+    val marketName: String,
+    /** Nome da seleção do componente */
+    val selectionName: String,
+    /** Total de apostas com este componente */
+    val totalBets: Long,
+    /** Vitórias (componente com status WON) */
+    val wins: Long,
+    /** Derrotas (componente com status LOST) */
+    val losses: Long,
+    /** Taxa de acerto do componente */
     val winRate: BigDecimal
 )
 

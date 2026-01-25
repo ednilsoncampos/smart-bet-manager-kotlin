@@ -168,7 +168,7 @@ class TicketServiceTest {
                     providerId = providerId,
                     stake = BigDecimal("100.00"),
                     totalOdd = BigDecimal("2.00"),
-                    ticketStatus = TicketStatus.WON,
+                    ticketStatus = TicketStatus.WIN,
                     financialStatus = FinancialStatus.FULL_WIN
                 ),
                 BetTicketEntity(
@@ -217,7 +217,7 @@ class TicketServiceTest {
         fun shouldFilterByStatus() {
             // Arrange
             val request = ListTicketsRequest(
-                status = TicketStatus.WON,
+                status = TicketStatus.WIN,
                 page = 0,
                 pageSize = 10
             )
@@ -227,7 +227,7 @@ class TicketServiceTest {
             every { 
                 ticketRepository.findByFilters(
                     userId = userId,
-                    status = TicketStatus.WON,
+                    status = TicketStatus.WIN,
                     financialStatus = null,
                     providerId = null,
                     pageable = any()
@@ -245,7 +245,7 @@ class TicketServiceTest {
             verify { 
                 ticketRepository.findByFilters(
                     userId = userId,
-                    status = TicketStatus.WON,
+                    status = TicketStatus.WIN,
                     financialStatus = null,
                     providerId = null,
                     pageable = any()

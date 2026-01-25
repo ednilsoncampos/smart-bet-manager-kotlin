@@ -26,6 +26,9 @@ data class BetSelection(
     /** Nome do torneio (derivado do relacionamento, usado em responses) */
     val tournamentName: String? = null,
 
+    /** Nome local/país do torneio (derivado do relacionamento, usado em responses) */
+    val tournamentLocalName: String? = null,
+
     /** Tipo de mercado - ex: "Resultado Final", "Ambas Marcam" */
     val marketType: String? = null,
     

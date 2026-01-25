@@ -9,7 +9,7 @@ enum class TicketStatus {
     OPEN,
     
     /** Aposta vencedora (ganho total, todas as seleções corretas) */
-    WON,
+    WIN,
     
     /** Aposta com ganho parcial (algumas seleções corretas, lucro positivo) */
     PARTIAL_WIN,
