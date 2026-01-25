@@ -470,12 +470,14 @@ class SuperbetStrategyTest {
             val result = strategy.parseResponse(json)
 
             assertEquals(TicketStatus.LOST, result.ticketStatus)
+            // Para bilhetes finalizados sem retorno, actualPayout deve ser 0 (não null)
+            assertEquals(BigDecimal("0.0"), result.actualPayout)
         }
 
         @Test
-        @DisplayName("deve retornar PARTIAL_WIN quando status é 'lost' mas totalWinnings > stake (sistema)")
-        fun shouldReturnPartialWinWhenStatusIsLostButHasPartialReturn() {
-            // Em apostas sistema, pode haver retorno parcial mesmo com status "lost"
+        @DisplayName("deve retornar WIN quando status é 'lost' mas totalWinnings > stake (sistema)")
+        fun shouldReturnWinWhenStatusIsLostButHasPartialReturn() {
+            // Em apostas sistema, pode haver retorno maior que stake mesmo com status "lost"
             val json = """
             {
                 "ticketId": "TICKET-PARTIAL-001",
@@ -528,13 +530,14 @@ class SuperbetStrategyTest {
 
             val result = strategy.parseResponse(json)
 
-            assertEquals(TicketStatus.PARTIAL_WIN, result.ticketStatus)
+            // totalWinnings (150) > stake (100), então é WIN
+            assertEquals(TicketStatus.WIN, result.ticketStatus)
             assertEquals(BigDecimal("150.0"), result.actualPayout)
         }
 
         @Test
-        @DisplayName("deve retornar PARTIAL_LOSS quando status é 'lost' mas totalWinnings > 0 e < stake")
-        fun shouldReturnPartialLossWhenStatusIsLostButHasSmallReturn() {
+        @DisplayName("deve retornar LOST quando status é 'lost' e totalWinnings > 0 mas < stake")
+        fun shouldReturnLostWhenStatusIsLostAndHasSmallReturn() {
             val json = """
             {
                 "ticketId": "TICKET-PARTIAL-LOSS-001",
@@ -579,13 +582,14 @@ class SuperbetStrategyTest {
 
             val result = strategy.parseResponse(json)
 
-            assertEquals(TicketStatus.PARTIAL_LOSS, result.ticketStatus)
+            // totalWinnings (50) < stake (100), então é LOST
+            assertEquals(TicketStatus.LOST, result.ticketStatus)
             assertEquals(BigDecimal("50.0"), result.actualPayout)
         }
 
         @Test
-        @DisplayName("deve retornar WIN quando totalWinnings >= estimated")
-        fun shouldReturnWinWhenTotalWinningsEqualsOrExceedsEstimated() {
+        @DisplayName("deve retornar WIN quando totalWinnings > stake")
+        fun shouldReturnWinWhenTotalWinningsExceedsStake() {
             val json = """
             {
                 "ticketId": "TICKET-WIN-001",
@@ -644,11 +648,44 @@ class SuperbetStrategyTest {
 
             val result = strategy.parseResponse(json)
 
-            // Deve usar payoff (200) como totalWinnings e comparar com stake (100)
-            // 200 > 100, então é WIN ou PARTIAL_WIN dependendo do estimated
-            // Como estimated não está presente (0), e totalWinnings (200) > stake (100), é PARTIAL_WIN
-            // Mas como estimated é 0 e totalWinnings >= estimated, deveria ser WIN
+            // Deve usar payoff (200) como totalWinnings
+            // 200 > stake (100), então é WIN
             assertEquals(TicketStatus.WIN, result.ticketStatus)
+        }
+
+        @Test
+        @DisplayName("deve retornar actualPayout zero para perda total (não null)")
+        fun shouldReturnZeroActualPayoutForTotalLoss() {
+            val json = """
+            {
+                "ticketId": "TICKET-TOTAL-LOSS-001",
+                "status": "lose",
+                "coefficient": 3.00,
+                "payment": { "stake": 100.00 },
+                "win": {
+                    "potentialTotalWinnings": 300.00,
+                    "totalWinnings": 0,
+                    "payoff": 0
+                },
+                "events": [
+                    {
+                        "eventId": "EVT-001",
+                        "name": ["Time A", "Time B"],
+                        "status": "lose",
+                        "coefficient": 3.00,
+                        "market": { "name": "Resultado" },
+                        "odd": { "oddUuid": "uuid-001", "name": "Time A" }
+                    }
+                ]
+            }
+            """.trimIndent()
+
+            val result = strategy.parseResponse(json)
+
+            assertEquals(TicketStatus.LOST, result.ticketStatus)
+            // actualPayout deve ser 0, não null, para que o BetStatusCalculator calcule TOTAL_LOSS
+            assertNotNull(result.actualPayout)
+            assertEquals(BigDecimal("0.0"), result.actualPayout)
         }
     }
 

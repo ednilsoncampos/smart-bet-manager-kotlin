@@ -147,9 +147,9 @@ class PerformanceAnalyticServiceTest {
         fun shouldCountAllDetailedFinancialStatuses() {
             val tickets = listOf(
                 createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.PARTIAL_WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
+                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
                 createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0")),
-                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.PARTIAL_LOSS, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
+                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
                 createTicket(5, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("0"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.TOTAL_LOSS, profitLoss = BigDecimal("-100")),
                 createTicket(6, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = null, ticketStatus = TicketStatus.OPEN, financialStatus = FinancialStatus.PENDING, profitLoss = BigDecimal("0"))
             )
@@ -182,9 +182,9 @@ class PerformanceAnalyticServiceTest {
             
             val tickets = listOf(
                 createTicket(1, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(2, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.PARTIAL_WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
+                createTicket(2, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
                 createTicket(3, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("0"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.TOTAL_LOSS, profitLoss = BigDecimal("-100")),
-                createTicket(4, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.PARTIAL_LOSS, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
+                createTicket(4, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
                 createTicket(5, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0"))
             )
             
