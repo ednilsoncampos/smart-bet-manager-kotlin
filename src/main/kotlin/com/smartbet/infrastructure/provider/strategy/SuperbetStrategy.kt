@@ -84,14 +84,14 @@ class SuperbetStrategy(
         val stake = data.path("payment").path("stake").asDouble()
             .takeIf { it > 0 }
             ?: data.path("stake").asDouble()
-            .takeIf { it > 0 }
+                .takeIf { it > 0 }
             ?: data.path("totalStake").asDouble()
 
         // Odd total - está em coefficient
         val totalOdd = data.path("coefficient").asDouble()
             .takeIf { it > 0 }
             ?: data.path("totalOdds").asDouble()
-            .takeIf { it > 0 }
+                .takeIf { it > 0 }
             ?: calculateTotalOdd(data.path("events"))
 
         // Ganho potencial - está em win.potentialTotalWinnings ou win.potentialPayoff
@@ -99,11 +99,11 @@ class SuperbetStrategy(
         val potentialPayout = winNode.path("potentialTotalWinnings").asDouble()
             .takeIf { it > 0 }
             ?: winNode.path("potentialPayoff").asDouble()
-            .takeIf { it > 0 }
+                .takeIf { it > 0 }
             ?: data.path("potentialWin").asDouble()
-            .takeIf { it > 0 }
+                .takeIf { it > 0 }
             ?: data.path("potentialPayout").asDouble()
-            .takeIf { it > 0 }
+                .takeIf { it > 0 }
             ?: (stake * totalOdd)
 
         // Cashout - verifica se foi feito cashout
@@ -120,8 +120,7 @@ class SuperbetStrategy(
         val ticketStatus = determineTicketStatus(
             statusStr = statusStr,
             stake = stake,
-            totalWinnings = totalWinningsForStatus,
-            estimated = winNode.path("estimated").asDouble()
+            totalWinnings = totalWinningsForStatus
         )
 
         // Ganho real - está em win.payoff ou win.totalWinnings
@@ -133,9 +132,9 @@ class SuperbetStrategy(
                 winNode.path("payoff").asDouble()
                     .takeIf { it > 0 }
                     ?: winNode.path("totalWinnings").asDouble()
-                    .takeIf { it > 0 }
+                        .takeIf { it > 0 }
                     ?: data.path("payout").asDouble()
-                    .takeIf { it > 0 }
+                        .takeIf { it > 0 }
                     ?: 0.0  // Bilhete finalizado sem retorno = perda total
             }
         }
@@ -148,8 +147,10 @@ class SuperbetStrategy(
             val selected = when {
                 systemNode.path("selected").isArray && systemNode.path("selected").size() > 0 ->
                     systemNode.path("selected")[0].asInt()
+
                 systemNode.path("fixed").asInt() > 0 ->
                     systemNode.path("fixed").asInt()
+
                 else -> 0
             }
 
@@ -198,7 +199,7 @@ class SuperbetStrategy(
             val odd = event.path("coefficient").asDouble()
                 .takeIf { it > 0 }
                 ?: event.path("odd").path("coefficient").asDouble()
-                .takeIf { it > 0 }
+                    .takeIf { it > 0 }
                 ?: 1.0
             totalOdd *= odd
         }
@@ -217,47 +218,58 @@ class SuperbetStrategy(
         }
     }
 
-    /**
-     * Determina o status do bilhete considerando os valores financeiros.
-     *
-     * Para status finalizados (win/lost), analisa totalWinnings vs stake
-     * para determinar se é WIN (retorno > stake) ou LOST (retorno <= stake).
-     *
-     * Regras:
-     * - totalWinnings <= 0: LOST (perda total)
-     * - totalWinnings > stake: WIN (ganho, total ou parcial)
-     * - totalWinnings <= stake: LOST (perda ou break even negativo)
-     */
     private fun determineTicketStatus(
         statusStr: String,
         stake: Double,
-        totalWinnings: Double,
-        estimated: Double
+        totalWinnings: Double
     ): TicketStatus {
-        // Para status finalizados (win/lost), analisa os valores financeiros
-        if (statusStr == "win" || statusStr.contains("won") ||
-            statusStr == "lost" || statusStr.contains("lose")) {
-            return when {
-                totalWinnings <= 0 -> TicketStatus.LOST    // Perda total
-                totalWinnings > stake -> TicketStatus.WIN  // Ganho (retorno > stake)
-                else -> TicketStatus.LOST                  // Perda (retorno <= stake)
-            }
+
+        // OPEN
+        if (statusStr.contains("open") || statusStr.contains("pending") || statusStr.contains("active")) {
+            return TicketStatus.OPEN
         }
 
-        // Para outros status (open, void, cashout), usa o mapeamento padrão
-        return mapTicketStatus(statusStr)
+        // CASHOUT
+        if (statusStr.contains("cashout") || statusStr.contains("cashed")) {
+            return TicketStatus.CASHOUT
+        }
+
+        // VOID
+        if (statusStr.contains("void") || statusStr.contains("cancelled")) {
+            return TicketStatus.VOID
+        }
+
+        // FINALIZADO → regra financeira simples
+        return if (totalWinnings > stake) {
+            TicketStatus.WIN
+        } else {
+            TicketStatus.LOST
+        }
     }
+
 
     private fun mapTicketStatus(status: String): TicketStatus {
         return when {
-            status.contains("open") || status.contains("pending") || status.contains("active") -> TicketStatus.OPEN
-            status.contains("won") || status == "win" || status.contains("partial_win") || status.contains("partialwin") -> TicketStatus.WIN
-            status.contains("lost") || status == "lose" || status.contains("partial_loss") || status.contains("partialloss") -> TicketStatus.LOST
-            status.contains("void") || status.contains("cancelled") -> TicketStatus.VOID
-            status.contains("cashout") || status.contains("cashed") -> TicketStatus.CASHOUT
-            else -> TicketStatus.OPEN
+            status.contains("open") || status.contains("pending") || status.contains("active") ->
+                TicketStatus.OPEN
+
+            status.contains("won") || status == "win" ->
+                TicketStatus.WIN
+
+            status.contains("lost") || status == "lose" ->
+                TicketStatus.LOST
+
+            status.contains("void") || status.contains("cancelled") ->
+                TicketStatus.VOID
+
+            status.contains("cashout") || status.contains("cashed") ->
+                TicketStatus.CASHOUT
+
+            else ->
+                TicketStatus.OPEN
         }
     }
+
 
     /**
      * Parseia os eventos do bilhete e extrai componentes quando existirem.
@@ -299,7 +311,7 @@ class SuperbetStrategy(
             val eventOdd = event.path("coefficient").asDouble()
                 .takeIf { it > 0 }
                 ?: event.path("odd").path("coefficient").asDouble()
-                .takeIf { it > 0 }
+                    .takeIf { it > 0 }
                 ?: 1.0
 
             // Sport ID - ex: "5" para futebol
@@ -315,8 +327,8 @@ class SuperbetStrategy(
 
             // Detecta se é Bet Builder: array eventComponents não está vazio
             val hasBetBuilderComponents = !eventComponents.isMissingNode &&
-                                          eventComponents.isArray &&
-                                          eventComponents.size() > 0
+                    eventComponents.isArray &&
+                    eventComponents.size() > 0
 
             // ID único para a seleção
             val oddNode = event.path("odd")
