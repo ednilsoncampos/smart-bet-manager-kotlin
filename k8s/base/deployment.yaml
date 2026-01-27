@@ -80,6 +80,12 @@ spec:
           value: "true"
         - name: SPRING_FLYWAY_BASELINE_ON_MIGRATE
           value: "true"
+        - name: LOGGING_LEVEL_COM_SMARTBET
+          value: "DEBUG"
+        - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_BOOT
+          value: "INFO"
+        - name: LOGGING_LEVEL_ORG_FLYWAYDB
+          value: "INFO"
         resources:
           requests:
             memory: "512Mi"
@@ -88,15 +94,16 @@ spec:
             memory: "1Gi"
             cpu: "500m"
         # Startup probe: aguarda app iniciar (Spring Boot pode demorar)
-        # Permite até 180s (30 * 6s) para inicialização
+        # Permite até 300s (60 * 5s) para inicialização (Flyway migrations podem demorar)
         startupProbe:
           httpGet:
             path: /actuator/health
             port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 6
-          timeoutSeconds: 5
-          failureThreshold: 30
+            scheme: HTTP
+          initialDelaySeconds: 15
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 60
           successThreshold: 1
         # Readiness probe: verifica se pode receber tráfego
         # Só roda após startup probe passar
