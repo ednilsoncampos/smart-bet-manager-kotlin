@@ -6,8 +6,8 @@ namespace: smartbet-prod
 resources:
   - ../../base
   - configmap.yaml
-  - secret.yaml
   - namespace.yaml
+  # secret.yaml removido - gerenciado pelo CI/CD via GitHub Secrets
 
 commonLabels:
   environment: prod

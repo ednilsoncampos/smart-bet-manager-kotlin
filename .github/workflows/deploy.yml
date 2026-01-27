@@ -114,6 +114,38 @@ jobs:
             --namespace=${{ needs.set-environment.outputs.namespace }} \
             --dry-run=client -o yaml | kubectl apply -f -
 
+      - name: Create/Update application secrets
+        run: |
+          # Define secrets baseado no ambiente
+          if [[ "${{ needs.set-environment.outputs.environment }}" == "prod" ]]; then
+            DB_USER="${{ secrets.DB_USER_PROD }}"
+            DB_PASSWORD="${{ secrets.DB_PASSWORD_PROD }}"
+            JWT_SECRET="${{ secrets.JWT_SECRET_PROD }}"
+          elif [[ "${{ needs.set-environment.outputs.environment }}" == "staging" ]]; then
+            DB_USER="${{ secrets.DB_USER_STAGING }}"
+            DB_PASSWORD="${{ secrets.DB_PASSWORD_STAGING }}"
+            JWT_SECRET="${{ secrets.JWT_SECRET_STAGING }}"
+          fi
+
+          # Validar se as secrets estão configuradas
+          if [[ -z "$DB_USER" ]] || [[ -z "$DB_PASSWORD" ]] || [[ -z "$JWT_SECRET" ]]; then
+            echo "❌ ERRO: Secrets não configuradas no GitHub!"
+            echo "Configure os secrets em Settings → Secrets and variables → Actions"
+            echo "Necessário: DB_USER_${{ needs.set-environment.outputs.environment }}, DB_PASSWORD_${{ needs.set-environment.outputs.environment }}, JWT_SECRET_${{ needs.set-environment.outputs.environment }}"
+            exit 1
+          fi
+
+          # Cria/atualiza o secret
+          echo "✅ Criando/atualizando secret smart-bet-secret..."
+          kubectl create secret generic smart-bet-secret \
+            --from-literal=db-user="$DB_USER" \
+            --from-literal=db-password="$DB_PASSWORD" \
+            --from-literal=jwt-secret="$JWT_SECRET" \
+            --namespace=${{ needs.set-environment.outputs.namespace }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+          echo "✅ Secret criado/atualizado com sucesso!"
+
       - name: Install Kustomize
         run: |
           curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
@@ -138,7 +170,18 @@ jobs:
         run: |
           echo "=== Pods ==="
           kubectl get pods -n ${{ needs.set-environment.outputs.namespace }} -l app=smart-bet-backend
+          echo ""
+          echo "=== Pod Details ==="
+          kubectl describe pods -n ${{ needs.set-environment.outputs.namespace }} -l app=smart-bet-backend
+          echo ""
           echo "=== Services ==="
           kubectl get svc -n ${{ needs.set-environment.outputs.namespace }}
+          echo ""
           echo "=== Ingress ==="
           kubectl get ingress -n ${{ needs.set-environment.outputs.namespace }}
+
+      - name: Show application logs
+        if: always()
+        run: |
+          echo "=== Application Logs (last 100 lines) ==="
+          kubectl logs -n ${{ needs.set-environment.outputs.namespace }} -l app=smart-bet-backend --tail=100 || echo "No logs available yet"
