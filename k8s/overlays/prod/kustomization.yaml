@@ -46,7 +46,6 @@ patches:
 
 images:
   - name: ghcr.io/ednilsoncampos/smart-bet-manager-kotlin
-    newTag: latest
-    # IMPORTANTE: Kubernetes pode não puxar nova imagem com tag 'latest'
-    # devido a imagePullPolicy. Considere usar tags versionadas (ex: v1.0.0)
-    # ou force um rollout restart após o deploy
+    # Tag será atualizada via 'kustomize edit set image' no CI/CD
+    # Nunca usar 'latest' - causa problemas de cache e rollout
+    newTag: placeholder

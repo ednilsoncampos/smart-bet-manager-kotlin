@@ -28,8 +28,10 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
       - name: smart-bet-backend
-        image: ghcr.io/ednilsoncampos/smart-bet-manager-kotlin:latest
-        imagePullPolicy: Always
+        # Tag será definida pelo Kustomize em cada ambiente (dev, staging, prod)
+        image: ghcr.io/ednilsoncampos/smart-bet-manager-kotlin
+        # IfNotPresent evita pulls desnecessários quando a tag é específica
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
           name: http

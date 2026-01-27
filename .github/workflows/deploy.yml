@@ -25,18 +25,21 @@ jobs:
       - name: Determine environment
         id: set-env
         run: |
+          # Usa SHA curto do commit como tag principal para rastreabilidade
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+
           if [[ "${{ github.ref }}" == "refs/heads/main" ]] || [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             echo "environment=prod" >> $GITHUB_OUTPUT
             echo "namespace=smartbet-prod" >> $GITHUB_OUTPUT
-            echo "image-tag=latest" >> $GITHUB_OUTPUT
+            echo "image-tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == "refs/heads/staging" ]]; then
             echo "environment=staging" >> $GITHUB_OUTPUT
             echo "namespace=smartbet-staging" >> $GITHUB_OUTPUT
-            echo "image-tag=staging" >> $GITHUB_OUTPUT
+            echo "image-tag=staging-${SHORT_SHA}" >> $GITHUB_OUTPUT
           else
             echo "environment=dev" >> $GITHUB_OUTPUT
             echo "namespace=smartbet-dev" >> $GITHUB_OUTPUT
-            echo "image-tag=dev" >> $GITHUB_OUTPUT
+            echo "image-tag=dev-${SHORT_SHA}" >> $GITHUB_OUTPUT
           fi
 
   build-and-push:
@@ -64,7 +67,6 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=${{ needs.set-environment.outputs.image-tag }}
-            type=sha,prefix=
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
@@ -81,12 +83,11 @@ jobs:
     needs: [set-environment, build-and-push]
     environment: ${{ needs.set-environment.outputs.environment }}
     if: |
-      needs.set-environment.outputs.environment != 'dev' &&
-      (
-        github.ref == 'refs/heads/main' ||
-        startsWith(github.ref, 'refs/tags/v') ||
-        github.event_name == 'workflow_dispatch'
-      )
+      github.ref == 'refs/heads/main' ||
+      github.ref == 'refs/heads/staging' ||
+      github.ref == 'refs/heads/development' ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      github.event_name == 'workflow_dispatch'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -109,19 +110,27 @@ jobs:
             --docker-password=${{ secrets.GITHUB_TOKEN }} \
             --namespace=${{ needs.set-environment.outputs.namespace }} \
             --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Install Kustomize
+        run: |
+          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          sudo mv kustomize /usr/local/bin/
+
+      - name: Update image tag in Kustomize
+        run: |
+          cd k8s/overlays/${{ needs.set-environment.outputs.environment }}
+          kustomize edit set image ghcr.io/ednilsoncampos/smart-bet-manager-kotlin=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.set-environment.outputs.image-tag }}
+          cat kustomization.yaml
+
       - name: Deploy with Kustomize
         run: |
           kubectl apply -k k8s/overlays/${{ needs.set-environment.outputs.environment }}
-      - name: Update deployment image
-        run: |
-          kubectl set image deployment/smart-bet-backend \
-            smart-bet-backend=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.set-environment.outputs.image-tag }} \
-            -n ${{ needs.set-environment.outputs.namespace }}
+
       - name: Wait for rollout
         run: |
           kubectl rollout status deployment/smart-bet-backend \
             -n ${{ needs.set-environment.outputs.namespace }} \
-            --timeout=300s
+            --timeout=600s
       - name: Verify deployment
         run: |
           echo "=== Pods ==="
