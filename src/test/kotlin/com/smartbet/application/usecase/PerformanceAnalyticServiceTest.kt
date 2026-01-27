@@ -172,6 +172,35 @@ class PerformanceAnalyticServiceTest {
     }
     
     @Nested
+    @DisplayName("getPerformanceByMarket()")
+    inner class GetPerformanceByMarketTests {
+
+        @Test
+        @DisplayName("deve retornar null para betBuilderComponents quando mercado não é 'Criar Aposta'")
+        fun `should return null for betBuilderComponents when market is not Criar Aposta`() {
+            // TODO: Implementar teste quando houver mock completo de seleções
+        }
+
+        @Test
+        @DisplayName("deve agrupar componentes por eventName quando mercado é 'Criar Aposta'")
+        fun `should group components by eventName when market is Criar Aposta`() {
+            // TODO: Implementar teste quando houver mock completo de seleções e componentes
+        }
+
+        @Test
+        @DisplayName("deve incluir eventName em cada componente de Bet Builder")
+        fun `should include eventName in each Bet Builder component`() {
+            // TODO: Implementar teste quando houver mock completo de seleções e componentes
+        }
+
+        @Test
+        @DisplayName("deve separar componentes de eventos diferentes mesmo com mercado/seleção iguais")
+        fun `should separate components from different events even with same market and selection`() {
+            // TODO: Implementar teste quando houver mock completo de seleções e componentes
+        }
+    }
+
+    @Nested
     @DisplayName("getPerformanceByProvider()")
     inner class GetPerformanceByProviderTests {
         
