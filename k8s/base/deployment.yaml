@@ -29,6 +29,7 @@ spec:
       containers:
       - name: smart-bet-backend
         image: ghcr.io/ednilsoncampos/smart-bet-manager-kotlin:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
           name: http
