@@ -64,6 +64,7 @@ class BetSelectionEntity(
         eventName = eventName,
         tournamentId = tournament?.id,
         tournamentName = tournament?.name,
+        tournamentLocalName = tournament?.localName,
         marketType = marketType,
         selection = selection,
         odd = odd,

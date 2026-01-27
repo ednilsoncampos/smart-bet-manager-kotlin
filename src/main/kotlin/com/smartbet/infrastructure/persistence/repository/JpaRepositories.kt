@@ -52,15 +52,44 @@ interface BetTicketRepository : JpaRepository<BetTicketEntity, Long> {
     ): BetTicketEntity?
     
     fun countByUserIdAndTicketStatus(userId: Long, status: TicketStatus): Long
-    
+
+    /**
+     * Busca um ticket por ID carregando as selections (evita LazyInitializationException).
+     */
     @Query("""
-        SELECT t FROM BetTicketEntity t 
-        WHERE t.userId = :userId 
+        SELECT DISTINCT t FROM BetTicketEntity t
+        LEFT JOIN FETCH t.selections
+        WHERE t.id = :id
+    """)
+    fun findByIdWithSelections(@Param("id") id: Long): BetTicketEntity?
+
+    /**
+     * Busca todos os tickets de um usuário carregando as selections (evita LazyInitializationException).
+     * Usado em analytics que precisam acessar as selections.
+     */
+    @Query("""
+        SELECT DISTINCT t FROM BetTicketEntity t
+        LEFT JOIN FETCH t.selections
+        WHERE t.userId = :userId
+    """)
+    fun findByUserIdWithSelections(@Param("userId") userId: Long): List<BetTicketEntity>
+
+    @Query("""
+        SELECT t FROM BetTicketEntity t
+        WHERE t.userId = :userId
         AND (:status IS NULL OR t.ticketStatus = :status)
         AND (:financialStatus IS NULL OR t.financialStatus = :financialStatus)
         AND (:providerId IS NULL OR t.providerId = :providerId)
         ORDER BY t.createdAt DESC
+    """,
+    countQuery = """
+        SELECT COUNT(t) FROM BetTicketEntity t
+        WHERE t.userId = :userId
+        AND (:status IS NULL OR t.ticketStatus = :status)
+        AND (:financialStatus IS NULL OR t.financialStatus = :financialStatus)
+        AND (:providerId IS NULL OR t.providerId = :providerId)
     """)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = ["selections"])
     fun findByFilters(
         @Param("userId") userId: Long,
         @Param("status") status: TicketStatus?,
@@ -100,19 +129,21 @@ interface BetTicketRepository : JpaRepository<BetTicketEntity, Long> {
      * Usado para refresh de bilhetes no login.
      */
     @Query("""
-        SELECT t FROM BetTicketEntity t 
-        WHERE t.userId = :userId 
+        SELECT DISTINCT t FROM BetTicketEntity t
+        LEFT JOIN FETCH t.selections
+        WHERE t.userId = :userId
         AND t.ticketStatus = 'OPEN'
         AND t.sourceUrl IS NOT NULL
     """)
     fun findOpenTicketsByUserId(@Param("userId") userId: Long): List<BetTicketEntity>
-    
+
     /**
      * Busca todos os bilhetes em aberto que foram importados (têm sourceUrl).
      * Usado pelo job agendado.
      */
     @Query("""
-        SELECT t FROM BetTicketEntity t 
+        SELECT DISTINCT t FROM BetTicketEntity t
+        LEFT JOIN FETCH t.selections
         WHERE t.ticketStatus = 'OPEN'
         AND t.sourceUrl IS NOT NULL
         ORDER BY t.userId, t.providerId
@@ -156,8 +187,19 @@ interface BetSelectionRepository : JpaRepository<BetSelectionEntity, Long> {
 @Repository
 interface BetSelectionComponentRepository : JpaRepository<BetSelectionComponentEntity, Long> {
     fun findBySelectionId(selectionId: Long): List<BetSelectionComponentEntity>
-    
+
     fun deleteBySelectionId(selectionId: Long)
+
+    /**
+     * Busca todos os componentes de Bet Builder de um usuário.
+     * Usado para analytics de performance por mercado.
+     */
+    @Query("""
+        SELECT c FROM BetSelectionComponentEntity c
+        WHERE c.selection.ticket.userId = :userId
+        AND c.selection.ticket.ticketStatus != 'OPEN'
+    """)
+    fun findByUserId(@Param("userId") userId: Long): List<BetSelectionComponentEntity>
 }
 
 @Repository

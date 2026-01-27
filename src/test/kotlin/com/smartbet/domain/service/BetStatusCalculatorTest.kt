@@ -39,7 +39,7 @@ class BetStatusCalculatorTest {
                 stake = BigDecimal("100.00"),
                 actualPayout = null,
                 potentialPayout = BigDecimal("250.00"),
-                ticketStatus = TicketStatus.WON
+                ticketStatus = TicketStatus.WIN
             )
             
             val result = BetStatusCalculator.calculate(input)
@@ -105,7 +105,7 @@ class BetStatusCalculatorTest {
                 stake = BigDecimal("100.00"),
                 actualPayout = BigDecimal("150.00"),
                 potentialPayout = BigDecimal("250.00"),
-                ticketStatus = TicketStatus.WON
+                ticketStatus = TicketStatus.WIN
             )
             
             val result = BetStatusCalculator.calculate(input)
@@ -122,7 +122,7 @@ class BetStatusCalculatorTest {
                 stake = BigDecimal("100.00"),
                 actualPayout = BigDecimal("250.00"),
                 potentialPayout = BigDecimal("250.00"),
-                ticketStatus = TicketStatus.WON
+                ticketStatus = TicketStatus.WIN
             )
             
             val result = BetStatusCalculator.calculate(input)
@@ -139,7 +139,7 @@ class BetStatusCalculatorTest {
                 stake = BigDecimal("100.00"),
                 actualPayout = BigDecimal("300.00"),
                 potentialPayout = BigDecimal("250.00"),
-                ticketStatus = TicketStatus.WON
+                ticketStatus = TicketStatus.WIN
             )
             
             val result = BetStatusCalculator.calculate(input)
@@ -155,7 +155,7 @@ class BetStatusCalculatorTest {
                 stake = BigDecimal("50.00"),
                 actualPayout = BigDecimal("125.00"),
                 potentialPayout = BigDecimal("125.00"),
-                ticketStatus = TicketStatus.WON
+                ticketStatus = TicketStatus.WIN
             )
             
             val result = BetStatusCalculator.calculate(input)
@@ -171,7 +171,7 @@ class BetStatusCalculatorTest {
                 stake = BigDecimal.ZERO,
                 actualPayout = BigDecimal("100.00"),
                 potentialPayout = BigDecimal("100.00"),
-                ticketStatus = TicketStatus.WON
+                ticketStatus = TicketStatus.WIN
             )
             
             val result = BetStatusCalculator.calculate(input)
@@ -191,7 +191,7 @@ class BetStatusCalculatorTest {
                 stake = BigDecimal("100.00"),
                 actualPayout = BigDecimal("200.00"),
                 potentialPayout = BigDecimal("200.00"),
-                ticketStatus = TicketStatus.WON
+                ticketStatus = TicketStatus.WIN
             )
             
             assertEquals(FinancialStatus.FULL_WIN, result.financialStatus)

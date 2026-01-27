@@ -168,7 +168,7 @@ class TicketServiceTest {
                     providerId = providerId,
                     stake = BigDecimal("100.00"),
                     totalOdd = BigDecimal("2.00"),
-                    ticketStatus = TicketStatus.WON,
+                    ticketStatus = TicketStatus.WIN,
                     financialStatus = FinancialStatus.FULL_WIN
                 ),
                 BetTicketEntity(
@@ -217,7 +217,7 @@ class TicketServiceTest {
         fun shouldFilterByStatus() {
             // Arrange
             val request = ListTicketsRequest(
-                status = TicketStatus.WON,
+                status = TicketStatus.WIN,
                 page = 0,
                 pageSize = 10
             )
@@ -227,7 +227,7 @@ class TicketServiceTest {
             every { 
                 ticketRepository.findByFilters(
                     userId = userId,
-                    status = TicketStatus.WON,
+                    status = TicketStatus.WIN,
                     financialStatus = null,
                     providerId = null,
                     pageable = any()
@@ -245,7 +245,7 @@ class TicketServiceTest {
             verify { 
                 ticketRepository.findByFilters(
                     userId = userId,
-                    status = TicketStatus.WON,
+                    status = TicketStatus.WIN,
                     financialStatus = null,
                     providerId = null,
                     pageable = any()
@@ -276,10 +276,10 @@ class TicketServiceTest {
                 slug = "superbet",
                 name = "Superbet"
             )
-            
-            every { ticketRepository.findById(ticketId) } returns Optional.of(ticket)
+
+            every { ticketRepository.findByIdWithSelections(ticketId) } returns ticket
             every { providerRepository.findById(providerId) } returns Optional.of(provider)
-            
+
             // Act
             val result = ticketService.getById(userId, ticketId)
             
@@ -292,8 +292,8 @@ class TicketServiceTest {
         @DisplayName("deve lançar exceção quando bilhete não existe")
         fun shouldThrowExceptionWhenTicketNotFound() {
             // Arrange
-            every { ticketRepository.findById(999L) } returns Optional.empty()
-            
+            every { ticketRepository.findByIdWithSelections(999L) } returns null
+
             // Act & Assert
             assertThrows(IllegalArgumentException::class.java) {
                 ticketService.getById(userId, 999L)
@@ -311,9 +311,9 @@ class TicketServiceTest {
                 stake = BigDecimal("100.00"),
                 totalOdd = BigDecimal("2.00")
             )
-            
-            every { ticketRepository.findById(1L) } returns Optional.of(ticket)
-            
+
+            every { ticketRepository.findByIdWithSelections(1L) } returns ticket
+
             // Act & Assert
             assertThrows(IllegalAccessException::class.java) {
                 ticketService.getById(userId, 1L)

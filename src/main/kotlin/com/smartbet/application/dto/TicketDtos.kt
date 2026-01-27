@@ -73,6 +73,8 @@ data class TicketResponse(
     val systemDescription: String?,
     val placedAt: Long?,
     val settledAt: Long?,
+    /** Indica se o bilhete foi encerrado via cashout */
+    val isCashedOut: Boolean,
     val selections: List<SelectionResponse>,
     val createdAt: Long,
     val updatedAt: Long
@@ -99,6 +101,7 @@ data class TicketResponse(
                 systemDescription = ticket.systemDescription,
                 placedAt = ticket.placedAt,
                 settledAt = ticket.settledAt,
+                isCashedOut = ticket.isCashedOut,
                 selections = ticket.selections.map { SelectionResponse.fromDomain(it) },
                 createdAt = ticket.createdAt,
                 updatedAt = ticket.updatedAt
