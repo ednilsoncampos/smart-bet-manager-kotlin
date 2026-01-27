@@ -252,15 +252,15 @@ class TicketService(
      */
     @Transactional(readOnly = true)
     fun getById(userId: Long, ticketId: Long): TicketResponse {
-        val ticket = ticketRepository.findById(ticketId)
-            .orElseThrow { IllegalArgumentException("Bilhete não encontrado: $ticketId") }
-        
+        val ticket = ticketRepository.findByIdWithSelections(ticketId)
+            ?: throw IllegalArgumentException("Bilhete não encontrado: $ticketId")
+
         if (ticket.userId != userId) {
             throw IllegalAccessException("Acesso negado ao bilhete: $ticketId")
         }
-        
+
         val provider = providerRepository.findById(ticket.providerId).orElse(null)
-        
+
         return TicketResponse.fromDomain(ticket.toDomain(), provider?.name)
     }
     
@@ -270,23 +270,23 @@ class TicketService(
     @Transactional
     fun updateStatus(userId: Long, request: UpdateTicketStatusRequest): TicketResponse {
         logger.info("Updating ticket status: {}", request.ticketId)
-        
-        val ticket = ticketRepository.findById(request.ticketId)
-            .orElseThrow { IllegalArgumentException("Bilhete não encontrado: ${request.ticketId}") }
-        
+
+        val ticket = ticketRepository.findByIdWithSelections(request.ticketId)
+            ?: throw IllegalArgumentException("Bilhete não encontrado: ${request.ticketId}")
+
         if (ticket.userId != userId) {
             throw IllegalAccessException("Acesso negado ao bilhete: ${request.ticketId}")
         }
-        
+
         // Atualiza os campos
         request.actualPayout?.let { ticket.actualPayout = it }
-        request.ticketStatus?.let { 
+        request.ticketStatus?.let {
             ticket.ticketStatus = it
             if (it != TicketStatus.OPEN) {
                 ticket.settledAt = System.currentTimeMillis()
             }
         }
-        
+
         // Recalcula o status financeiro
         val statusResult = BetStatusCalculator.calculateFromTicket(
             stake = ticket.stake,
@@ -294,16 +294,16 @@ class TicketService(
             potentialPayout = ticket.potentialPayout,
             ticketStatus = ticket.ticketStatus
         )
-        
+
         ticket.financialStatus = statusResult.financialStatus
         ticket.profitLoss = statusResult.profitLoss
         ticket.roi = statusResult.roi
-        
+
         val savedTicket = ticketRepository.save(ticket)
         val provider = providerRepository.findById(ticket.providerId).orElse(null)
-        
+
         logger.info("Ticket status updated: {} -> {}", request.ticketId, statusResult.financialStatus)
-        
+
         return TicketResponse.fromDomain(savedTicket.toDomain(), provider?.name)
     }
     
