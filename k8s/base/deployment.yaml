@@ -29,6 +29,7 @@ spec:
       containers:
       - name: smart-bet-backend
         image: ghcr.io/ednilsoncampos/smart-bet-manager-kotlin:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
           name: http
@@ -73,6 +74,10 @@ spec:
             secretKeyRef:
               name: smart-bet-secret
               key: jwt-secret
+        - name: SPRING_FLYWAY_ENABLED
+          value: "true"
+        - name: SPRING_FLYWAY_BASELINE_ON_MIGRATE
+          value: "true"
         resources:
           requests:
             memory: "512Mi"

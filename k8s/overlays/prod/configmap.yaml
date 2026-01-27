@@ -18,3 +18,7 @@ data:
   
   # Logging
   log-level: "WARN"
+
+  # Flyway configuration
+  flyway-enabled: "true"
+  flyway-baseline-on-migrate: "true"
