@@ -247,30 +247,6 @@ class SuperbetStrategy(
         }
     }
 
-
-    private fun mapTicketStatus(status: String): TicketStatus {
-        return when {
-            status.contains("open") || status.contains("pending") || status.contains("active") ->
-                TicketStatus.OPEN
-
-            status.contains("won") || status == "win" ->
-                TicketStatus.WIN
-
-            status.contains("lost") || status == "lose" ->
-                TicketStatus.LOST
-
-            status.contains("void") || status.contains("cancelled") ->
-                TicketStatus.VOID
-
-            status.contains("cashout") || status.contains("cashed") ->
-                TicketStatus.CASHOUT
-
-            else ->
-                TicketStatus.OPEN
-        }
-    }
-
-
     /**
      * Parseia os eventos do bilhete e extrai componentes quando existirem.
      *

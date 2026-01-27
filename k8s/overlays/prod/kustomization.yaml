@@ -46,4 +46,6 @@ patches:
 
 images:
   - name: ghcr.io/ednilsoncampos/smart-bet-manager-kotlin
-    newTag: latest
+    # Tag será atualizada via 'kustomize edit set image' no CI/CD
+    # Nunca usar 'latest' - causa problemas de cache e rollout
+    newTag: placeholder

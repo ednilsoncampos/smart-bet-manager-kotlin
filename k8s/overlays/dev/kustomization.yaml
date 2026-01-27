@@ -48,4 +48,5 @@ patches:
 
 images:
   - name: ghcr.io/ednilsoncampos/smart-bet-manager-kotlin
-    newTag: dev
+    # Tag será atualizada via 'kustomize edit set image' no CI/CD
+    newTag: placeholder
