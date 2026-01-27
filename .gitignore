@@ -3,3 +3,9 @@
 .gradle/
 .idea/
 /build/
+
+# Secrets com credenciais reais (não commitar!)
+smart-bet-secret-*.ps1
+ghcr-secret.ps1
+*.env
+.env.*
