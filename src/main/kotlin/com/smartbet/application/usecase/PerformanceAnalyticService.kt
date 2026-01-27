@@ -216,16 +216,23 @@ class PerformanceAnalyticService(
                 BigDecimal.ZERO
             }
 
-            // Se for "Criar Aposta" (Bet Builder), agrupa os componentes individuais
+            // Se for "Criar Aposta" (Bet Builder), agrupa os componentes individuais por evento
             val betBuilderStats = if (marketType == "Criar Aposta") {
                 val allComponentsForMarket = selections
                     .flatMap { marketData -> componentsBySelection[marketData.selection.id] ?: emptyList() }
 
-                // Agrupa por marketName + selectionName
+                // Agrupa por eventName + marketName + selectionName
                 allComponentsForMarket
-                    .groupBy { "${it.marketName}||${it.selectionName}" }
+                    .groupBy { component ->
+                        val eventName = component.selection?.eventName ?: "Evento Desconhecido"
+                        "${eventName}||${component.marketName}||${component.selectionName}"
+                    }
                     .map { (key, components) ->
-                        val (compMarketName, compSelectionName) = key.split("||")
+                        val parts = key.split("||")
+                        val compEventName = parts[0]
+                        val compMarketName = parts[1]
+                        val compSelectionName = parts[2]
+
                         val compTotal = components.size.toLong()
                         val compWins = components.count { it.status == SelectionStatus.WON }.toLong()
                         val compLosses = components.count { it.status == SelectionStatus.LOST }.toLong()
@@ -238,6 +245,7 @@ class PerformanceAnalyticService(
                         }
 
                         BetBuilderComponentStats(
+                            eventName = compEventName,
                             marketName = compMarketName,
                             selectionName = compSelectionName,
                             totalBets = compTotal,

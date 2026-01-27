@@ -193,11 +193,13 @@ interface BetSelectionComponentRepository : JpaRepository<BetSelectionComponentE
     /**
      * Busca todos os componentes de Bet Builder de um usuário.
      * Usado para analytics de performance por mercado.
+     * JOIN FETCH garante que o eventName da selection esteja disponível.
      */
     @Query("""
-        SELECT c FROM BetSelectionComponentEntity c
-        WHERE c.selection.ticket.userId = :userId
-        AND c.selection.ticket.ticketStatus != 'OPEN'
+        SELECT DISTINCT c FROM BetSelectionComponentEntity c
+        JOIN FETCH c.selection s
+        WHERE s.ticket.userId = :userId
+        AND s.ticket.ticketStatus != 'OPEN'
     """)
     fun findByUserId(@Param("userId") userId: Long): List<BetSelectionComponentEntity>
 }

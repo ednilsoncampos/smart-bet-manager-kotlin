@@ -80,9 +80,11 @@ data class PerformanceByMarketResponse(
 
 /**
  * Estatísticas de um componente individual do Bet Builder.
- * Agrupa por selectionName (ex: "Ambas Marcam - Sim", "Mais de 0.5 Gols - Time A").
+ * Agrupa por evento + mercado + seleção (ex: "Flamengo vs Palmeiras", "Ambas Marcam", "Sim").
  */
 data class BetBuilderComponentStats(
+    /** Nome do evento/jogo (ex: "Flamengo vs Palmeiras") */
+    val eventName: String,
     /** Nome do mercado do componente */
     val marketName: String,
     /** Nome da seleção do componente */
