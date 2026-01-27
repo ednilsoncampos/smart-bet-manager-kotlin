@@ -81,7 +81,15 @@ interface BetTicketRepository : JpaRepository<BetTicketEntity, Long> {
         AND (:financialStatus IS NULL OR t.financialStatus = :financialStatus)
         AND (:providerId IS NULL OR t.providerId = :providerId)
         ORDER BY t.createdAt DESC
+    """,
+    countQuery = """
+        SELECT COUNT(t) FROM BetTicketEntity t
+        WHERE t.userId = :userId
+        AND (:status IS NULL OR t.ticketStatus = :status)
+        AND (:financialStatus IS NULL OR t.financialStatus = :financialStatus)
+        AND (:providerId IS NULL OR t.providerId = :providerId)
     """)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = ["selections"])
     fun findByFilters(
         @Param("userId") userId: Long,
         @Param("status") status: TicketStatus?,
@@ -121,19 +129,21 @@ interface BetTicketRepository : JpaRepository<BetTicketEntity, Long> {
      * Usado para refresh de bilhetes no login.
      */
     @Query("""
-        SELECT t FROM BetTicketEntity t 
-        WHERE t.userId = :userId 
+        SELECT DISTINCT t FROM BetTicketEntity t
+        LEFT JOIN FETCH t.selections
+        WHERE t.userId = :userId
         AND t.ticketStatus = 'OPEN'
         AND t.sourceUrl IS NOT NULL
     """)
     fun findOpenTicketsByUserId(@Param("userId") userId: Long): List<BetTicketEntity>
-    
+
     /**
      * Busca todos os bilhetes em aberto que foram importados (têm sourceUrl).
      * Usado pelo job agendado.
      */
     @Query("""
-        SELECT t FROM BetTicketEntity t 
+        SELECT DISTINCT t FROM BetTicketEntity t
+        LEFT JOIN FETCH t.selections
         WHERE t.ticketStatus = 'OPEN'
         AND t.sourceUrl IS NOT NULL
         ORDER BY t.userId, t.providerId
