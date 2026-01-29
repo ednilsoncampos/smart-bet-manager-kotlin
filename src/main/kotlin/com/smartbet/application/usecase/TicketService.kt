@@ -261,7 +261,15 @@ class TicketService(
 
         val provider = providerRepository.findById(ticket.providerId).orElse(null)
 
-        return TicketResponse.fromDomain(ticket.toDomain(), provider?.name)
+        // Buscar componentes de todas as seleções
+        val selectionComponentsMap = ticket.selections
+            .mapNotNull { it.id }
+            .associateWith { selectionId ->
+                selectionComponentRepository.findBySelectionId(selectionId)
+                    .map { it.toDomain() }
+            }
+
+        return TicketResponse.fromDomain(ticket.toDomain(), provider?.name, selectionComponentsMap)
     }
     
     /**

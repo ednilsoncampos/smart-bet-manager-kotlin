@@ -1,6 +1,7 @@
 package com.smartbet.application.dto
 
 import com.smartbet.domain.entity.BetSelection
+import com.smartbet.domain.entity.BetSelectionComponent
 import com.smartbet.domain.entity.BetTicket
 import com.smartbet.domain.enum.*
 import java.math.BigDecimal
@@ -80,7 +81,11 @@ data class TicketResponse(
     val updatedAt: Long
 ) {
     companion object {
-        fun fromDomain(ticket: BetTicket, providerName: String? = null): TicketResponse {
+        fun fromDomain(
+            ticket: BetTicket,
+            providerName: String? = null,
+            selectionComponentsMap: Map<Long, List<BetSelectionComponent>> = emptyMap()
+        ): TicketResponse {
             return TicketResponse(
                 id = ticket.id!!,
                 providerId = ticket.providerId,
@@ -102,7 +107,10 @@ data class TicketResponse(
                 placedAt = ticket.placedAt,
                 settledAt = ticket.settledAt,
                 isCashedOut = ticket.isCashedOut,
-                selections = ticket.selections.map { SelectionResponse.fromDomain(it) },
+                selections = ticket.selections.map { selection ->
+                    val components = selectionComponentsMap[selection.id] ?: emptyList()
+                    SelectionResponse.fromDomain(selection, components)
+                },
                 createdAt = ticket.createdAt,
                 updatedAt = ticket.updatedAt
             )
@@ -110,29 +118,57 @@ data class TicketResponse(
     }
 }
 
+data class BetBuilderComponentDetail(
+    val marketName: String,
+    val selectionName: String,
+    val status: SelectionStatus
+)
+
 data class SelectionResponse(
     val id: Long?,
     val eventName: String,
     val tournamentName: String?,
     val marketType: String?,
-    val selection: String,
     val odd: BigDecimal,
     val status: SelectionStatus,
     val eventDate: Long?,
-    val eventResult: String?
+    val eventResult: String?,
+    val components: List<BetBuilderComponentDetail>
 ) {
     companion object {
-        fun fromDomain(selection: BetSelection): SelectionResponse {
+        fun fromDomain(
+            selection: BetSelection,
+            components: List<BetSelectionComponent> = emptyList()
+        ): SelectionResponse {
+            // Se não houver componentes, cria um único componente a partir dos dados da seleção
+            val componentList = if (components.isEmpty()) {
+                listOf(
+                    BetBuilderComponentDetail(
+                        marketName = selection.marketType ?: "Desconhecido",
+                        selectionName = selection.selection,
+                        status = selection.status
+                    )
+                )
+            } else {
+                components.map { component ->
+                    BetBuilderComponentDetail(
+                        marketName = component.marketName,
+                        selectionName = component.selectionName,
+                        status = component.status
+                    )
+                }
+            }
+
             return SelectionResponse(
                 id = selection.id,
                 eventName = selection.eventName,
                 tournamentName = selection.tournamentName,
                 marketType = selection.marketType,
-                selection = selection.selection,
                 odd = selection.odd,
                 status = selection.status,
                 eventDate = selection.eventDate,
-                eventResult = selection.eventResult
+                eventResult = selection.eventResult,
+                components = componentList
             )
         }
     }
