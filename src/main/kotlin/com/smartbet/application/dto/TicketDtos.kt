@@ -1,9 +1,12 @@
 package com.smartbet.application.dto
 
+import com.smartbet.common.requireId
 import com.smartbet.domain.entity.BetSelection
 import com.smartbet.domain.entity.BetSelectionComponent
 import com.smartbet.domain.entity.BetTicket
 import com.smartbet.domain.enum.*
+import jakarta.validation.Valid
+import jakarta.validation.constraints.*
 import java.math.BigDecimal
 
 // ============================================
@@ -11,42 +14,91 @@ import java.math.BigDecimal
 // ============================================
 
 data class ImportTicketRequest(
+    @field:NotBlank(message = "URL é obrigatória")
+    @field:Pattern(
+        regexp = "^https?://.+",
+        message = "URL deve ser válida (começar com http:// ou https://)"
+    )
     val url: String,
+
+    @field:Positive(message = "Bankroll ID deve ser um número positivo")
     val bankrollId: Long? = null
 )
 
 data class CreateManualTicketRequest(
+    @field:Positive(message = "Provider ID é obrigatório e deve ser positivo")
     val providerId: Long,
+
+    @field:Positive(message = "Bankroll ID deve ser um número positivo")
     val bankrollId: Long? = null,
+
     val betType: BetType = BetType.SINGLE,
+
+    @field:DecimalMin(value = "0.01", message = "Stake deve ser maior que zero")
+    @field:Digits(integer = 10, fraction = 2, message = "Stake deve ter no máximo 2 casas decimais")
     val stake: BigDecimal,
+
+    @field:DecimalMin(value = "1.01", message = "Odd total deve ser maior ou igual a 1.01")
+    @field:Digits(integer = 10, fraction = 2, message = "Odd total deve ter no máximo 2 casas decimais")
     val totalOdd: BigDecimal,
+
+    @field:Positive(message = "Payout potencial deve ser positivo")
     val potentialPayout: BigDecimal? = null,
+
+    @field:Size(max = 100, message = "Descrição do sistema deve ter no máximo 100 caracteres")
     val systemDescription: String? = null,
+
     val placedAt: Long? = null,
+
+    @field:NotEmpty(message = "Deve ter pelo menos uma seleção")
+    @field:Valid
     val selections: List<CreateSelectionRequest>
 )
 
 data class CreateSelectionRequest(
+    @field:NotBlank(message = "Nome do evento é obrigatório")
+    @field:Size(max = 200, message = "Nome do evento deve ter no máximo 200 caracteres")
     val eventName: String,
+
+    @field:Positive(message = "Tournament ID deve ser um número positivo")
     val tournamentId: Long? = null,
+
+    @field:Size(max = 100, message = "Tipo de mercado deve ter no máximo 100 caracteres")
     val marketType: String? = null,
+
+    @field:NotBlank(message = "Seleção é obrigatória")
+    @field:Size(max = 200, message = "Seleção deve ter no máximo 200 caracteres")
     val selection: String,
+
+    @field:DecimalMin(value = "1.01", message = "Odd deve ser maior ou igual a 1.01")
+    @field:Digits(integer = 10, fraction = 2, message = "Odd deve ter no máximo 2 casas decimais")
     val odd: BigDecimal,
+
     val eventDate: Long? = null
 )
 
 data class UpdateTicketStatusRequest(
+    @field:Positive(message = "Ticket ID é obrigatório e deve ser positivo")
     val ticketId: Long,
+
+    @field:PositiveOrZero(message = "Payout real deve ser zero ou positivo")
     val actualPayout: BigDecimal? = null,
+
     val ticketStatus: TicketStatus? = null
 )
 
 data class ListTicketsRequest(
     val status: TicketStatus? = null,
     val financialStatus: FinancialStatus? = null,
+
+    @field:Positive(message = "Provider ID deve ser um número positivo")
     val providerId: Long? = null,
+
+    @field:Min(value = 0, message = "Página deve ser zero ou maior")
     val page: Int = 0,
+
+    @field:Min(value = 1, message = "Tamanho da página deve ser no mínimo 1")
+    @field:Max(value = 100, message = "Tamanho da página deve ser no máximo 100")
     val pageSize: Int = 20
 )
 
@@ -87,7 +139,7 @@ data class TicketResponse(
             selectionComponentsMap: Map<Long, List<BetSelectionComponent>> = emptyMap()
         ): TicketResponse {
             return TicketResponse(
-                id = ticket.id!!,
+                id = ticket.id.requireId("BetTicket"),
                 providerId = ticket.providerId,
                 providerName = providerName,
                 bankrollId = ticket.bankrollId,

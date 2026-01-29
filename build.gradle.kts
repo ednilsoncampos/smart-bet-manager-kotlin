@@ -49,7 +49,10 @@ dependencies {
     
     // OpenAPI/Swagger
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0")
-    
+
+    // Rate Limiting
+    implementation("com.bucket4j:bucket4j-core:8.10.1")
+
     // Observability - Logging (JSON format for production)
     implementation("ch.qos.logback.contrib:logback-json-classic:0.1.5")
     implementation("ch.qos.logback.contrib:logback-jackson:0.1.5")

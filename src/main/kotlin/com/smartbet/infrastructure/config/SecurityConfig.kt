@@ -1,6 +1,8 @@
 package com.smartbet.infrastructure.config
 
 import com.smartbet.infrastructure.security.JwtAuthenticationFilter
+import com.smartbet.infrastructure.security.RateLimitFilter
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpMethod
@@ -20,8 +22,14 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 class SecurityConfig(
-    private val jwtAuthenticationFilter: JwtAuthenticationFilter
+    private val jwtAuthenticationFilter: JwtAuthenticationFilter,
+    private val rateLimitFilter: RateLimitFilter,
+    @Value("\${cors.allowed-origins}") private val allowedOrigins: String
 ) {
+
+    companion object {
+        const val CORS_MAX_AGE_SECONDS = 3600L
+    }
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
@@ -63,8 +71,10 @@ class SecurityConfig(
                     // Todos os outros endpoints requerem autenticação
                     .anyRequest().authenticated()
             }
-            // Adicionar filtro JWT antes do filtro de autenticação padrão
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter::class.java)
+            // Adicionar rate limit antes de tudo para bloquear requisições excedentes rapidamente
+            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter::class.java)
+            // Adicionar filtro JWT para autenticação
+            .addFilterAfter(jwtAuthenticationFilter, RateLimitFilter::class.java)
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
 
@@ -79,15 +89,19 @@ class SecurityConfig(
     
     @Bean
     fun corsConfigurationSource(): CorsConfigurationSource {
+        val origins = allowedOrigins.split(",").map { it.trim() }
+
         val configuration = CorsConfiguration().apply {
-            allowedOriginPatterns = listOf("*")
+            // Convertendo string separada por vírgula em lista
+            // Ex: "http://localhost:3000,https://smartbet.api.br"
+            allowedOrigins = origins
             allowedMethods = listOf("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
             allowedHeaders = listOf("*")
             exposedHeaders = listOf("Authorization", "Content-Type")
             allowCredentials = true
-            maxAge = 3600L
+            maxAge = CORS_MAX_AGE_SECONDS
         }
-        
+
         return UrlBasedCorsConfigurationSource().apply {
             registerCorsConfiguration("/**", configuration)
         }

@@ -22,3 +22,7 @@ data:
   # Flyway configuration
   flyway-enabled: "true"
   flyway-baseline-on-migrate: "true"
+
+  # CORS - Production (APENAS domínios autorizados)
+  # IMPORTANTE: Atualize com os domínios reais de produção
+  cors-allowed-origins: "https://smartbet.api.br"

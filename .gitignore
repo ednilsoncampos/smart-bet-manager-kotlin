@@ -10,3 +10,4 @@ ghcr-secret.ps1
 *.env
 .env.*
 /claude-analise/
+/.claude/

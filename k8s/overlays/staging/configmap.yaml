@@ -18,3 +18,7 @@ data:
   
   # Logging
   log-level: "INFO"
+
+  # CORS - Staging (domínios de homologação)
+  # IMPORTANTE: Atualize com os domínios reais de staging
+  cors-allowed-origins: "https://staging.smartbet.api.br,https://app-staging.smartbet.api.br"

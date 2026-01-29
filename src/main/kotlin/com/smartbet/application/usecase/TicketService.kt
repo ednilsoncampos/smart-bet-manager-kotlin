@@ -1,6 +1,7 @@
 package com.smartbet.application.usecase
 
 import com.smartbet.application.dto.*
+import com.smartbet.common.requireId
 import com.smartbet.domain.entity.BetSelection
 import com.smartbet.domain.entity.BetSelectionComponent
 import com.smartbet.domain.entity.BetTicket
@@ -84,7 +85,7 @@ class TicketService(
         // Cria a entidade do bilhete
         val ticketEntity = BetTicketEntity(
             userId = userId,
-            providerId = provider.id!!,
+            providerId = provider.id.requireId("Provider"),
             bankrollId = request.bankrollId,
             externalTicketId = parsedData.externalTicketId,
             sourceUrl = request.url,
@@ -109,7 +110,7 @@ class TicketService(
         // Cria as seleções (resolvendo Tournament pelo externalTournamentId)
         val selectionEntities = parsedData.selections.map { selectionData ->
             val tournament = selectionData.externalTournamentId?.let { extId ->
-                tournamentRepository.findByProviderIdAndExternalId(provider.id!!, extId)
+                tournamentRepository.findByProviderIdAndExternalId(provider.id.requireId("Provider"), extId)
             }
 
             BetSelectionEntity(
@@ -173,7 +174,7 @@ class TicketService(
         
         val ticketEntity = BetTicketEntity(
             userId = userId,
-            providerId = provider.id!!,
+            providerId = provider.id.requireId("Provider"),
             bankrollId = request.bankrollId,
             betType = request.betType,
             stake = request.stake,
@@ -379,7 +380,7 @@ class TicketService(
             } catch (e: Exception) {
                 logger.error("Error refreshing ticket {}: {}", ticket.id, e.message)
                 errorDetails.add(RefreshError(
-                    ticketId = ticket.id!!,
+                    ticketId = ticket.id.requireId("Ticket"),
                     externalTicketId = ticket.externalTicketId,
                     errorMessage = e.message ?: "Unknown error"
                 ))
@@ -438,7 +439,7 @@ class TicketService(
             } catch (e: Exception) {
                 logger.error("Error refreshing ticket {}: {}", ticket.id, e.message)
                 errorDetails.add(RefreshError(
-                    ticketId = ticket.id!!,
+                    ticketId = ticket.id.requireId("Ticket"),
                     externalTicketId = ticket.externalTicketId,
                     errorMessage = e.message ?: "Unknown error"
                 ))

@@ -17,3 +17,6 @@ data:
   
   # Logging
   log-level: "DEBUG"
+
+  # CORS - Development (permite múltiplas portas localhost)
+  cors-allowed-origins: "http://localhost:3000,http://localhost:4200,http://localhost:8081"
