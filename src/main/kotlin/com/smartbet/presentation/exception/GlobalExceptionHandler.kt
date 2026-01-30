@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import org.springframework.web.servlet.resource.NoResourceFoundException
 import java.time.Instant
 import java.util.*
 
@@ -109,7 +110,32 @@ class GlobalExceptionHandler {
                 timestamp = Instant.now()
             ))
     }
-    
+
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun handleNoResourceFound(ex: NoResourceFoundException): ResponseEntity<ErrorResponse> {
+        val resourcePath = ex.resourcePath
+        logger.warn("Endpoint not found: {}", resourcePath)
+
+        // Mapeia endpoints antigos/incorretos para sugestões
+        val suggestion = when {
+            resourcePath.contains("/api/users/profile") ->
+                "Use GET /api/auth/me para obter o perfil do usuário autenticado"
+            resourcePath.contains("/api/user/") ->
+                "Use /api/auth/me para perfil ou /api/admin/users/* para gestão de usuários"
+            else -> null
+        }
+
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(ErrorResponse(
+                status = HttpStatus.NOT_FOUND.value(),
+                error = "ENDPOINT_NOT_FOUND",
+                message = "O endpoint '$resourcePath' não existe",
+                suggestion = suggestion,
+                timestamp = Instant.now()
+            ))
+    }
+
     @ExceptionHandler(Exception::class)
     fun handleGeneric(ex: Exception): ResponseEntity<ErrorResponse> {
         logger.error("Unexpected error", ex)
@@ -128,7 +154,8 @@ data class ErrorResponse(
     val status: Int,
     val error: String,
     val message: String,
-    val timestamp: Instant
+    val timestamp: Instant,
+    val suggestion: String? = null
 )
 
 data class ValidationErrorResponse(

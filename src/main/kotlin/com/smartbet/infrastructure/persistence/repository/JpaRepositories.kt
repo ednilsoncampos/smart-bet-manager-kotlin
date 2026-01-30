@@ -155,6 +155,19 @@ interface BetTicketRepository : JpaRepository<BetTicketEntity, Long> {
      * Usado para evitar importação duplicada.
      */
     fun findByUserIdAndExternalTicketId(userId: Long, externalTicketId: String): BetTicketEntity?
+
+    /**
+     * Busca bilhetes liquidados de um usuário (não estão mais em OPEN).
+     * Usado para processamento de analytics.
+     */
+    @Query("""
+        SELECT DISTINCT t FROM BetTicketEntity t
+        LEFT JOIN FETCH t.selections
+        WHERE t.userId = :userId
+        AND t.ticketStatus != 'OPEN'
+        ORDER BY t.settledAt DESC
+    """)
+    fun findSettledTicketsByUserId(@Param("userId") userId: Long): List<BetTicketEntity>
 }
 
 @Repository

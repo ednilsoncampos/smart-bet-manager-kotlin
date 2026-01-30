@@ -9,3 +9,5 @@ smart-bet-secret-*.ps1
 ghcr-secret.ps1
 *.env
 .env.*
+/claude-analise/
+/.claude/

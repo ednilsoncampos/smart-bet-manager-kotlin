@@ -21,8 +21,7 @@ allowCredentials = true               // Envia credenciais para qualquer origem!
 ```kotlin
 // Em produção, restringir para origens específicas
 allowedOrigins = listOf(
-    "https://app.smartbet.com.br",
-    "https://smartbet.com.br"
+    "https://smartbet.api.br"
 )
 allowCredentials = true
 ```

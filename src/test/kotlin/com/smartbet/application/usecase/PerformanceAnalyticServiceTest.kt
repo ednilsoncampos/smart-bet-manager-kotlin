@@ -1,14 +1,7 @@
 package com.smartbet.application.usecase
 
-import com.smartbet.domain.enum.BetType
-import com.smartbet.domain.enum.FinancialStatus
-import com.smartbet.domain.enum.TicketStatus
-import com.smartbet.infrastructure.persistence.entity.BetTicketEntity
-import com.smartbet.infrastructure.persistence.entity.BettingProviderEntity
-import com.smartbet.infrastructure.persistence.repository.BetSelectionComponentRepository
-import com.smartbet.infrastructure.persistence.repository.BetSelectionRepository
-import com.smartbet.infrastructure.persistence.repository.BetTicketRepository
-import com.smartbet.infrastructure.persistence.repository.BettingProviderRepository
+import com.smartbet.infrastructure.persistence.entity.*
+import com.smartbet.infrastructure.persistence.repository.*
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.*
@@ -16,242 +9,662 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.springframework.data.domain.PageImpl
-import org.springframework.data.domain.Pageable
 import java.math.BigDecimal
 
 @DisplayName("PerformanceAnalyticService")
 class PerformanceAnalyticServiceTest {
 
-    private lateinit var ticketRepository: BetTicketRepository
-    private lateinit var selectionRepository: BetSelectionRepository
-    private lateinit var selectionComponentRepository: BetSelectionComponentRepository
+    private lateinit var overallRepository: PerformanceOverallRepository
+    private lateinit var byProviderRepository: PerformanceByProviderRepository
+    private lateinit var byMarketRepository: PerformanceByMarketRepository
+    private lateinit var byMonthRepository: PerformanceByMonthRepository
+    private lateinit var byTournamentRepository: PerformanceByTournamentRepository
     private lateinit var providerRepository: BettingProviderRepository
+    private lateinit var tournamentRepository: TournamentRepository
+    private lateinit var selectionComponentRepository: BetSelectionComponentRepository
+    private lateinit var ticketRepository: BetTicketRepository
     private lateinit var performanceAnalyticService: PerformanceAnalyticService
 
     @BeforeEach
     fun setup() {
-        ticketRepository = mockk()
-        selectionRepository = mockk()
-        selectionComponentRepository = mockk()
+        overallRepository = mockk()
+        byProviderRepository = mockk()
+        byMarketRepository = mockk()
+        byMonthRepository = mockk()
+        byTournamentRepository = mockk()
         providerRepository = mockk()
+        tournamentRepository = mockk()
+        selectionComponentRepository = mockk()
+        ticketRepository = mockk()
         performanceAnalyticService = PerformanceAnalyticService(
-            ticketRepository,
-            selectionRepository,
+            overallRepository,
+            byProviderRepository,
+            byMarketRepository,
+            byMonthRepository,
+            byTournamentRepository,
+            providerRepository,
+            tournamentRepository,
             selectionComponentRepository,
-            providerRepository
+            ticketRepository
         )
     }
-    
-    private fun createTicket(
-        id: Long,
-        userId: Long = 1L,
-        providerId: Long = 1L,
-        stake: BigDecimal,
-        totalOdd: BigDecimal,
-        actualPayout: BigDecimal?,
-        ticketStatus: TicketStatus,
-        financialStatus: FinancialStatus,
-        profitLoss: BigDecimal
-    ): BetTicketEntity {
-        return BetTicketEntity(
-            id = id,
-            userId = userId,
-            providerId = providerId,
-            bankrollId = null,
-            externalTicketId = "EXT-$id",
-            sourceUrl = "https://example.com/$id",
-            betType = BetType.SINGLE,
-            stake = stake,
-            totalOdd = totalOdd,
-            potentialPayout = stake.multiply(totalOdd),
-            actualPayout = actualPayout,
-            ticketStatus = ticketStatus,
-            financialStatus = financialStatus,
-            profitLoss = profitLoss,
-            roi = if (stake > BigDecimal.ZERO) profitLoss.divide(stake, 4, java.math.RoundingMode.HALF_UP).multiply(BigDecimal(100)) else BigDecimal.ZERO
-        )
-    }
-    
+
     @Nested
     @DisplayName("getOverallPerformance()")
     inner class GetOverallPerformanceTests {
-        
+
         @Test
-        @DisplayName("deve calcular mediana corretamente com número ímpar de elementos")
-        fun shouldCalculateMedianWithOddNumberOfElements() {
-            val tickets = listOf(
-                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("1.50"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("50")),
-                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("3.00"), actualPayout = BigDecimal("300"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("200"))
+        @DisplayName("deve retornar performance completa quando existem dados")
+        fun shouldReturnCompletePerformanceWhenDataExists() {
+            val userId = 1L
+            val performanceEntity = PerformanceOverallEntity(
+                userId = userId,
+                totalTickets = 100,
+                ticketsWon = 60,
+                ticketsLost = 35,
+                ticketsVoid = 5,
+                ticketsCashedOut = 2,
+                totalStake = BigDecimal("10000.00"),
+                totalReturn = BigDecimal("12500.00"),
+                totalProfit = BigDecimal("2500.00"),
+                roi = BigDecimal("25.0000"),
+                winRate = BigDecimal("60.00"),
+                avgOdd = BigDecimal("2.5000"),
+                avgStake = BigDecimal("100.00"),
+                currentStreak = 3,
+                bestWinStreak = 8,
+                worstLossStreak = -5,
+                biggestWin = BigDecimal("500.00"),
+                biggestLoss = BigDecimal("-200.00"),
+                bestRoiTicket = BigDecimal("150.0000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
             )
-            
-            every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
-            
-            val result = performanceAnalyticService.getOverallPerformance(1L)
-            
-            // Mediana de [1.50, 2.00, 3.00] = 2.00 (elemento central)
-            assertEquals(BigDecimal("2.00"), result.medianOdd.setScale(2))
+
+            every { overallRepository.findByUserId(userId) } returns performanceEntity
+
+            val result = performanceAnalyticService.getOverallPerformance(userId)
+
+            assertEquals(100L, result.totalBets)
+            assertEquals(60L, result.wins)
+            assertEquals(35L, result.losses)
+            assertEquals(5L, result.voids)
+            assertEquals(2L, result.cashedOut)
+            assertEquals(BigDecimal("60.00"), result.winRate)
+            assertEquals(BigDecimal("10000.00"), result.totalStaked)
+            assertEquals(BigDecimal("12500.00"), result.totalReturns)
+            assertEquals(BigDecimal("2500.00"), result.profitLoss)
+            assertEquals(BigDecimal("25.0000"), result.roi)
+            assertEquals(BigDecimal("2.5000"), result.avgOdd)
+            assertEquals(BigDecimal("100.00"), result.avgStake)
+            assertEquals(3, result.currentStreak)
+            assertEquals(8, result.bestWinStreak)
+            assertEquals(-5, result.worstLossStreak)
+            assertEquals(BigDecimal("500.00"), result.biggestWin)
+            assertEquals(BigDecimal("-200.00"), result.biggestLoss)
+            assertEquals(BigDecimal("150.0000"), result.bestRoiTicket)
+            assertEquals(1704067200000L, result.firstBetAt)
+            assertEquals(1735689600000L, result.lastSettledAt)
         }
-        
+
         @Test
-        @DisplayName("deve calcular mediana corretamente com número par de elementos")
-        fun shouldCalculateMedianWithEvenNumberOfElements() {
-            val tickets = listOf(
-                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("1.50"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("50")),
-                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("3.00"), actualPayout = BigDecimal("300"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("200")),
-                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("4.00"), actualPayout = BigDecimal("400"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("300"))
-            )
-            
-            every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
-            
-            val result = performanceAnalyticService.getOverallPerformance(1L)
-            
-            // Mediana de [1.50, 2.00, 3.00, 4.00] = (2.00 + 3.00) / 2 = 2.50
-            assertEquals(BigDecimal("2.50"), result.medianOdd.setScale(2))
-        }
-        
-        @Test
-        @DisplayName("deve retornar zero quando não há bilhetes")
-        fun shouldReturnZeroWhenNoTickets() {
-            every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(emptyList())
-            
-            val result = performanceAnalyticService.getOverallPerformance(1L)
-            
-            assertEquals(BigDecimal.ZERO, result.medianOdd)
+        @DisplayName("deve retornar resposta vazia quando não há dados")
+        fun shouldReturnEmptyResponseWhenNoData() {
+            val userId = 1L
+
+            every { overallRepository.findByUserId(userId) } returns null
+
+            val result = performanceAnalyticService.getOverallPerformance(userId)
+
             assertEquals(0L, result.totalBets)
-        }
-        
-        @Test
-        @DisplayName("deve ser resistente a outliers (odds muito altas)")
-        fun shouldBeResistantToOutliers() {
-            val tickets = listOf(
-                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("1.50"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("50")),
-                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("2.50"), actualPayout = BigDecimal("250"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("150")),
-                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("100.00"), actualPayout = BigDecimal("10000"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("9900")) // Outlier
-            )
-            
-            every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
-            
-            val result = performanceAnalyticService.getOverallPerformance(1L)
-            
-            // Mediana de [1.50, 2.00, 2.50, 100.00] = (2.00 + 2.50) / 2 = 2.25
-            // A média seria (1.50 + 2.00 + 2.50 + 100.00) / 4 = 26.50 (distorcida pelo outlier)
-            assertEquals(BigDecimal("2.25"), result.medianOdd.setScale(2))
-        }
-        
-        @Test
-        @DisplayName("deve contar todos os status financeiros detalhados")
-        fun shouldCountAllDetailedFinancialStatuses() {
-            val tickets = listOf(
-                createTicket(1, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(2, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
-                createTicket(3, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0")),
-                createTicket(4, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
-                createTicket(5, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("0"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.TOTAL_LOSS, profitLoss = BigDecimal("-100")),
-                createTicket(6, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = null, ticketStatus = TicketStatus.OPEN, financialStatus = FinancialStatus.PENDING, profitLoss = BigDecimal("0"))
-            )
-            
-            every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
-            
-            val result = performanceAnalyticService.getOverallPerformance(1L)
-            
-            assertEquals(6L, result.totalBets)
-            assertEquals(5L, result.settledBets)
-            assertEquals(1L, result.openBets)
-            assertEquals(1L, result.fullWins)
-            assertEquals(1L, result.partialWins)
-            assertEquals(1L, result.breakEven)
-            assertEquals(1L, result.partialLosses)
-            assertEquals(1L, result.totalLosses)
-            assertEquals(2L, result.wins) // fullWins + partialWins
-            assertEquals(2L, result.losses) // totalLosses + partialLosses
-        }
-    }
-    
-    @Nested
-    @DisplayName("getPerformanceByMarket()")
-    inner class GetPerformanceByMarketTests {
-
-        @Test
-        @DisplayName("deve retornar null para betBuilderComponents quando mercado não é 'Criar Aposta'")
-        fun `should return null for betBuilderComponents when market is not Criar Aposta`() {
-            // TODO: Implementar teste quando houver mock completo de seleções
-        }
-
-        @Test
-        @DisplayName("deve agrupar componentes por eventName quando mercado é 'Criar Aposta'")
-        fun `should group components by eventName when market is Criar Aposta`() {
-            // TODO: Implementar teste quando houver mock completo de seleções e componentes
-        }
-
-        @Test
-        @DisplayName("deve incluir eventName em cada componente de Bet Builder")
-        fun `should include eventName in each Bet Builder component`() {
-            // TODO: Implementar teste quando houver mock completo de seleções e componentes
-        }
-
-        @Test
-        @DisplayName("deve separar componentes de eventos diferentes mesmo com mercado/seleção iguais")
-        fun `should separate components from different events even with same market and selection`() {
-            // TODO: Implementar teste quando houver mock completo de seleções e componentes
+            assertEquals(0L, result.wins)
+            assertEquals(0L, result.losses)
+            assertEquals(0L, result.voids)
+            assertEquals(0L, result.cashedOut)
+            assertEquals(BigDecimal.ZERO, result.winRate)
+            assertEquals(BigDecimal.ZERO, result.totalStaked)
+            assertEquals(BigDecimal.ZERO, result.totalReturns)
+            assertEquals(BigDecimal.ZERO, result.profitLoss)
+            assertEquals(BigDecimal.ZERO, result.roi)
+            assertNull(result.avgOdd)
+            assertNull(result.avgStake)
+            assertEquals(0, result.currentStreak)
+            assertEquals(0, result.bestWinStreak)
+            assertEquals(0, result.worstLossStreak)
+            assertNull(result.biggestWin)
+            assertNull(result.biggestLoss)
+            assertNull(result.bestRoiTicket)
+            assertNull(result.firstBetAt)
+            assertEquals(0L, result.lastSettledAt)
         }
     }
 
     @Nested
     @DisplayName("getPerformanceByProvider()")
     inner class GetPerformanceByProviderTests {
-        
+
         @Test
-        @DisplayName("deve contar todos os status financeiros corretamente")
-        fun shouldCountAllFinancialStatusesCorrectly() {
-            val provider = BettingProviderEntity(id = 1L, name = "Superbet", slug = "superbet")
-            
-            val tickets = listOf(
-                createTicket(1, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(2, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("150"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.PARTIAL_WIN, profitLoss = BigDecimal("50")),
-                createTicket(3, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("0"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.TOTAL_LOSS, profitLoss = BigDecimal("-100")),
-                createTicket(4, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("80"), ticketStatus = TicketStatus.LOST, financialStatus = FinancialStatus.PARTIAL_LOSS, profitLoss = BigDecimal("-20")),
-                createTicket(5, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("100"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.BREAK_EVEN, profitLoss = BigDecimal("0"))
+        @DisplayName("deve retornar performance por provider com dados completos")
+        fun shouldReturnPerformanceByProviderWithCompleteData() {
+            val userId = 1L
+            val providerId = 1L
+            val provider = BettingProviderEntity(
+                id = providerId,
+                name = "Superbet",
+                slug = "superbet"
             )
-            
-            every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
+
+            val performanceEntity = PerformanceByProviderEntity(
+                id = PerformanceByProviderId(userId, providerId),
+                totalTickets = 50,
+                ticketsWon = 30,
+                ticketsLost = 18,
+                ticketsVoid = 2,
+                ticketsCashedOut = 1,
+                totalStake = BigDecimal("5000.00"),
+                totalProfit = BigDecimal("1200.00"),
+                roi = BigDecimal("24.0000"),
+                winRate = BigDecimal("60.00"),
+                avgOdd = BigDecimal("2.3000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
+            )
+
+            every { byProviderRepository.findByIdUserId(userId) } returns listOf(performanceEntity)
             every { providerRepository.findAll() } returns listOf(provider)
-            
-            val result = performanceAnalyticService.getPerformanceByProvider(1L)
-            
+
+            val result = performanceAnalyticService.getPerformanceByProvider(userId)
+
             assertEquals(1, result.size)
             val providerStats = result[0]
-            
-            assertEquals(5L, providerStats.totalBets)
-            assertEquals(2L, providerStats.wins) // FULL_WIN + PARTIAL_WIN
-            assertEquals(2L, providerStats.losses) // TOTAL_LOSS + PARTIAL_LOSS
-            assertEquals(1L, providerStats.fullWins)
-            assertEquals(1L, providerStats.partialWins)
-            assertEquals(1L, providerStats.totalLosses)
-            assertEquals(1L, providerStats.partialLosses)
-            assertEquals(1L, providerStats.breakEven)
+
+            assertEquals(providerId, providerStats.providerId)
+            assertEquals("Superbet", providerStats.providerName)
+            assertEquals(50L, providerStats.totalBets)
+            assertEquals(30L, providerStats.wins)
+            assertEquals(18L, providerStats.losses)
+            assertEquals(2L, providerStats.voids)
+            assertEquals(1L, providerStats.cashedOut)
+            assertEquals(BigDecimal("60.00"), providerStats.winRate)
+            assertEquals(BigDecimal("5000.00"), providerStats.totalStaked)
+            assertEquals(BigDecimal("1200.00"), providerStats.profitLoss)
+            assertEquals(BigDecimal("24.0000"), providerStats.roi)
+            assertEquals(BigDecimal("2.3000"), providerStats.avgOdd)
+            assertEquals(1704067200000L, providerStats.firstBetAt)
+            assertEquals(1735689600000L, providerStats.lastSettledAt)
         }
-        
+
         @Test
-        @DisplayName("não deve contar bilhetes em aberto")
-        fun shouldNotCountOpenTickets() {
-            val provider = BettingProviderEntity(id = 1L, name = "Superbet", slug = "superbet")
-            
-            val tickets = listOf(
-                createTicket(1, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = BigDecimal("200"), ticketStatus = TicketStatus.WIN, financialStatus = FinancialStatus.FULL_WIN, profitLoss = BigDecimal("100")),
-                createTicket(2, providerId = 1L, stake = BigDecimal("100"), totalOdd = BigDecimal("2.00"), actualPayout = null, ticketStatus = TicketStatus.OPEN, financialStatus = FinancialStatus.PENDING, profitLoss = BigDecimal("0"))
+        @DisplayName("deve retornar lista vazia quando não há dados")
+        fun shouldReturnEmptyListWhenNoData() {
+            val userId = 1L
+
+            every { byProviderRepository.findByIdUserId(userId) } returns emptyList()
+            every { providerRepository.findAll() } returns emptyList()
+
+            val result = performanceAnalyticService.getPerformanceByProvider(userId)
+
+            assertTrue(result.isEmpty())
+        }
+
+        @Test
+        @DisplayName("deve retornar múltiplos providers quando existem")
+        fun shouldReturnMultipleProvidersWhenTheyExist() {
+            val userId = 1L
+            val provider1 = BettingProviderEntity(id = 1L, name = "Superbet", slug = "superbet")
+            val provider2 = BettingProviderEntity(id = 2L, name = "Betano", slug = "betano")
+
+            val performance1 = PerformanceByProviderEntity(
+                id = PerformanceByProviderId(userId, 1L),
+                totalTickets = 30,
+                ticketsWon = 18,
+                ticketsLost = 12,
+                ticketsVoid = 0,
+                ticketsCashedOut = 0,
+                totalStake = BigDecimal("3000.00"),
+                totalProfit = BigDecimal("600.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgOdd = BigDecimal("2.0000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
             )
-            
-            every { ticketRepository.findByUserId(any(), any<Pageable>()) } returns PageImpl(tickets)
-            every { providerRepository.findAll() } returns listOf(provider)
-            
-            val result = performanceAnalyticService.getPerformanceByProvider(1L)
-            
+
+            val performance2 = PerformanceByProviderEntity(
+                id = PerformanceByProviderId(userId, 2L),
+                totalTickets = 20,
+                ticketsWon = 12,
+                ticketsLost = 8,
+                ticketsVoid = 0,
+                ticketsCashedOut = 0,
+                totalStake = BigDecimal("2000.00"),
+                totalProfit = BigDecimal("400.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgOdd = BigDecimal("2.5000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
+            )
+
+            every { byProviderRepository.findByIdUserId(userId) } returns listOf(performance1, performance2)
+            every { providerRepository.findAll() } returns listOf(provider1, provider2)
+
+            val result = performanceAnalyticService.getPerformanceByProvider(userId)
+
+            assertEquals(2, result.size)
+            assertEquals("Superbet", result[0].providerName)
+            assertEquals("Betano", result[1].providerName)
+        }
+    }
+
+    @Nested
+    @DisplayName("getPerformanceByMonth()")
+    inner class GetPerformanceByMonthTests {
+
+        @Test
+        @DisplayName("deve retornar performance mensal com dados completos")
+        fun shouldReturnPerformanceByMonthWithCompleteData() {
+            val userId = 1L
+            val year = 2026
+            val month = 1
+
+            val performanceEntity = PerformanceByMonthEntity(
+                id = PerformanceByMonthId(userId, year, month),
+                totalTickets = 25,
+                ticketsWon = 15,
+                ticketsLost = 9,
+                ticketsVoid = 1,
+                totalStake = BigDecimal("2500.00"),
+                totalProfit = BigDecimal("500.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgStake = BigDecimal("100.00"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1706745600000L
+            )
+
+            every { byMonthRepository.findByIdUserIdOrderByIdYearDescIdMonthDesc(userId) } returns listOf(performanceEntity)
+
+            val result = performanceAnalyticService.getPerformanceByMonth(userId)
+
             assertEquals(1, result.size)
-            assertEquals(1L, result[0].totalBets) // Apenas o bilhete WON
+            val monthStats = result[0]
+
+            assertEquals(year, monthStats.year)
+            assertEquals(month, monthStats.month)
+            assertEquals(25L, monthStats.totalBets)
+            assertEquals(15L, monthStats.wins)
+            assertEquals(9L, monthStats.losses)
+            assertEquals(1L, monthStats.voids)
+            assertEquals(BigDecimal("60.00"), monthStats.winRate)
+            assertEquals(BigDecimal("2500.00"), monthStats.totalStaked)
+            assertEquals(BigDecimal("500.00"), monthStats.profitLoss)
+            assertEquals(BigDecimal("20.0000"), monthStats.roi)
+            assertEquals(BigDecimal("100.00"), monthStats.avgStake)
+            assertEquals(1704067200000L, monthStats.firstBetAt)
+            assertEquals(1706745600000L, monthStats.lastSettledAt)
+        }
+
+        @Test
+        @DisplayName("deve retornar lista vazia quando não há dados")
+        fun shouldReturnEmptyListWhenNoData() {
+            val userId = 1L
+
+            every { byMonthRepository.findByIdUserIdOrderByIdYearDescIdMonthDesc(userId) } returns emptyList()
+
+            val result = performanceAnalyticService.getPerformanceByMonth(userId)
+
+            assertTrue(result.isEmpty())
+        }
+
+        @Test
+        @DisplayName("deve retornar múltiplos meses ordenados do mais recente para o mais antigo")
+        fun shouldReturnMultipleMonthsOrderedByRecentFirst() {
+            val userId = 1L
+
+            val jan2026 = PerformanceByMonthEntity(
+                id = PerformanceByMonthId(userId, 2026, 1),
+                totalTickets = 20,
+                ticketsWon = 12,
+                ticketsLost = 8,
+                ticketsVoid = 0,
+                totalStake = BigDecimal("2000.00"),
+                totalProfit = BigDecimal("400.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgStake = BigDecimal("100.00"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1706745600000L
+            )
+
+            val dec2025 = PerformanceByMonthEntity(
+                id = PerformanceByMonthId(userId, 2025, 12),
+                totalTickets = 30,
+                ticketsWon = 18,
+                ticketsLost = 12,
+                ticketsVoid = 0,
+                totalStake = BigDecimal("3000.00"),
+                totalProfit = BigDecimal("600.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgStake = BigDecimal("100.00"),
+                firstBetAt = 1701475200000L,
+                lastSettledAt = 1704067200000L
+            )
+
+            val nov2025 = PerformanceByMonthEntity(
+                id = PerformanceByMonthId(userId, 2025, 11),
+                totalTickets = 15,
+                ticketsWon = 9,
+                ticketsLost = 6,
+                ticketsVoid = 0,
+                totalStake = BigDecimal("1500.00"),
+                totalProfit = BigDecimal("300.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgStake = BigDecimal("100.00"),
+                firstBetAt = 1698883200000L,
+                lastSettledAt = 1701475200000L
+            )
+
+            // Repository já retorna ordenado DESC
+            every { byMonthRepository.findByIdUserIdOrderByIdYearDescIdMonthDesc(userId) } returns listOf(jan2026, dec2025, nov2025)
+
+            val result = performanceAnalyticService.getPerformanceByMonth(userId)
+
+            assertEquals(3, result.size)
+            // Verifica ordem: Jan/2026, Dez/2025, Nov/2025
+            assertEquals(2026, result[0].year)
+            assertEquals(1, result[0].month)
+            assertEquals(2025, result[1].year)
+            assertEquals(12, result[1].month)
+            assertEquals(2025, result[2].year)
+            assertEquals(11, result[2].month)
+        }
+
+        @Test
+        @DisplayName("deve incluir avgStake null quando não há dados suficientes")
+        fun shouldIncludeNullAvgStakeWhenNotEnoughData() {
+            val userId = 1L
+
+            val performanceEntity = PerformanceByMonthEntity(
+                id = PerformanceByMonthId(userId, 2026, 1),
+                totalTickets = 1,
+                ticketsWon = 1,
+                ticketsLost = 0,
+                ticketsVoid = 0,
+                totalStake = BigDecimal("100.00"),
+                totalProfit = BigDecimal("50.00"),
+                roi = BigDecimal("50.0000"),
+                winRate = BigDecimal("100.00"),
+                avgStake = null, // Sem avgStake
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1704067200000L
+            )
+
+            every { byMonthRepository.findByIdUserIdOrderByIdYearDescIdMonthDesc(userId) } returns listOf(performanceEntity)
+
+            val result = performanceAnalyticService.getPerformanceByMonth(userId)
+
+            assertEquals(1, result.size)
+            assertNull(result[0].avgStake)
+        }
+    }
+
+    @Nested
+    @DisplayName("getPerformanceByMarket()")
+    inner class GetPerformanceByMarketTests {
+
+        @Test
+        @DisplayName("deve retornar performance por mercado com dados completos")
+        fun shouldReturnPerformanceByMarketWithCompleteData() {
+            val userId = 1L
+            val marketType = "Resultado Final"
+
+            val performanceEntity = PerformanceByMarketEntity(
+                id = PerformanceByMarketId(userId, marketType),
+                totalSelections = 120,
+                wins = 75,
+                losses = 40,
+                voids = 5,
+                uniqueTickets = 80,
+                totalStake = BigDecimal("8000.00"),
+                totalProfit = BigDecimal("1600.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("62.50"),
+                avgOdd = BigDecimal("2.2000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
+            )
+
+            every { byMarketRepository.findByIdUserId(userId) } returns listOf(performanceEntity)
+
+            val result = performanceAnalyticService.getPerformanceByMarket(userId)
+
+            assertEquals(1, result.size)
+            val marketStats = result[0]
+
+            assertEquals(marketType, marketStats.marketType)
+            assertEquals(120L, marketStats.totalSelections)
+            assertEquals(80L, marketStats.uniqueTickets)
+            assertEquals(75L, marketStats.wins)
+            assertEquals(40L, marketStats.losses)
+            assertEquals(5L, marketStats.voids)
+            assertEquals(BigDecimal("62.50"), marketStats.winRate)
+            assertEquals(BigDecimal("8000.00"), marketStats.totalStaked)
+            assertEquals(BigDecimal("1600.00"), marketStats.profitLoss)
+            assertEquals(BigDecimal("20.0000"), marketStats.roi)
+            assertEquals(BigDecimal("2.2000"), marketStats.avgOdd)
+            assertEquals(1704067200000L, marketStats.firstBetAt)
+            assertEquals(1735689600000L, marketStats.lastSettledAt)
+            assertNull(marketStats.betBuilderComponents)
+        }
+
+        @Test
+        @DisplayName("deve retornar lista vazia quando não há dados")
+        fun shouldReturnEmptyListWhenNoData() {
+            val userId = 1L
+
+            every { byMarketRepository.findByIdUserId(userId) } returns emptyList()
+
+            val result = performanceAnalyticService.getPerformanceByMarket(userId)
+
+            assertTrue(result.isEmpty())
+        }
+
+        @Test
+        @DisplayName("deve buscar componentes de Bet Builder quando mercado é 'Criar Aposta'")
+        fun shouldFetchBetBuilderComponentsWhenMarketIsCriarAposta() {
+            val userId = 1L
+            val marketType = "Criar Aposta"
+
+            val performanceEntity = PerformanceByMarketEntity(
+                id = PerformanceByMarketId(userId, marketType),
+                totalSelections = 50,
+                wins = 30,
+                losses = 20,
+                voids = 0,
+                uniqueTickets = 25,
+                totalStake = BigDecimal("2500.00"),
+                totalProfit = BigDecimal("500.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgOdd = BigDecimal("3.0000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
+            )
+
+            every { byMarketRepository.findByIdUserId(userId) } returns listOf(performanceEntity)
+            every { selectionComponentRepository.findByUserId(userId) } returns emptyList()
+
+            val result = performanceAnalyticService.getPerformanceByMarket(userId)
+
+            assertEquals(1, result.size)
+            assertNotNull(result[0].betBuilderComponents)
+            assertTrue(result[0].betBuilderComponents!!.isEmpty())
+        }
+    }
+
+    @Nested
+    @DisplayName("getPerformanceByTournament()")
+    inner class GetPerformanceByTournamentTests {
+
+        @Test
+        @DisplayName("deve retornar performance por torneio com dados completos")
+        fun shouldReturnPerformanceByTournamentWithCompleteData() {
+            val userId = 1L
+            val tournamentId = 10L
+            val tournament = TournamentEntity(
+                id = tournamentId,
+                name = "Premier League",
+                localName = "Inglaterra",
+                providerId = 1L,
+                sportId = 5L,
+                externalId = 100
+            )
+
+            val performanceEntity = PerformanceByTournamentEntity(
+                id = PerformanceByTournamentId(userId, tournamentId),
+                totalTickets = 40,
+                ticketsWon = 25,
+                ticketsLost = 14,
+                ticketsVoid = 1,
+                totalStake = BigDecimal("4000.00"),
+                totalProfit = BigDecimal("800.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("62.50"),
+                avgOdd = BigDecimal("2.1000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
+            )
+
+            every { byTournamentRepository.findByIdUserId(userId) } returns listOf(performanceEntity)
+            every { tournamentRepository.findAll() } returns listOf(tournament)
+
+            val result = performanceAnalyticService.getPerformanceByTournament(userId)
+
+            assertEquals(1, result.size)
+            val tournamentStats = result[0]
+
+            assertEquals(tournamentId, tournamentStats.tournamentId)
+            assertEquals("Premier League", tournamentStats.tournamentName)
+            assertEquals("Inglaterra", tournamentStats.tournamentLocalName)
+            assertEquals(40L, tournamentStats.totalBets)
+            assertEquals(25L, tournamentStats.wins)
+            assertEquals(14L, tournamentStats.losses)
+            assertEquals(1L, tournamentStats.voids)
+            assertEquals(BigDecimal("62.50"), tournamentStats.winRate)
+            assertEquals(BigDecimal("4000.00"), tournamentStats.totalStaked)
+            assertEquals(BigDecimal("800.00"), tournamentStats.profitLoss)
+            assertEquals(BigDecimal("20.0000"), tournamentStats.roi)
+            assertEquals(BigDecimal("2.1000"), tournamentStats.avgOdd)
+            assertEquals(1704067200000L, tournamentStats.firstBetAt)
+            assertEquals(1735689600000L, tournamentStats.lastSettledAt)
+        }
+
+        @Test
+        @DisplayName("deve retornar lista vazia quando não há dados")
+        fun shouldReturnEmptyListWhenNoData() {
+            val userId = 1L
+
+            every { byTournamentRepository.findByIdUserId(userId) } returns emptyList()
+            every { tournamentRepository.findAll() } returns emptyList()
+
+            val result = performanceAnalyticService.getPerformanceByTournament(userId)
+
+            assertTrue(result.isEmpty())
+        }
+
+        @Test
+        @DisplayName("deve retornar múltiplos torneios")
+        fun shouldReturnMultipleTournaments() {
+            val userId = 1L
+            val tournament1 = TournamentEntity(
+                id = 1L,
+                name = "Premier League",
+                localName = "Inglaterra",
+                providerId = 1L,
+                sportId = 5L,
+                externalId = 100
+            )
+            val tournament2 = TournamentEntity(
+                id = 2L,
+                name = "La Liga",
+                localName = "Espanha",
+                providerId = 1L,
+                sportId = 5L,
+                externalId = 200
+            )
+
+            val performance1 = PerformanceByTournamentEntity(
+                id = PerformanceByTournamentId(userId, 1L),
+                totalTickets = 30,
+                ticketsWon = 18,
+                ticketsLost = 12,
+                ticketsVoid = 0,
+                totalStake = BigDecimal("3000.00"),
+                totalProfit = BigDecimal("600.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgOdd = BigDecimal("2.0000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
+            )
+
+            val performance2 = PerformanceByTournamentEntity(
+                id = PerformanceByTournamentId(userId, 2L),
+                totalTickets = 20,
+                ticketsWon = 12,
+                ticketsLost = 8,
+                ticketsVoid = 0,
+                totalStake = BigDecimal("2000.00"),
+                totalProfit = BigDecimal("400.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgOdd = BigDecimal("2.5000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
+            )
+
+            every { byTournamentRepository.findByIdUserId(userId) } returns listOf(performance1, performance2)
+            every { tournamentRepository.findAll() } returns listOf(tournament1, tournament2)
+
+            val result = performanceAnalyticService.getPerformanceByTournament(userId)
+
+            assertEquals(2, result.size)
+            assertEquals("Premier League", result[0].tournamentName)
+            assertEquals("La Liga", result[1].tournamentName)
+        }
+
+        @Test
+        @DisplayName("deve retornar 'Torneio Desconhecido' quando torneio não existe")
+        fun shouldReturnUnknownTournamentWhenTournamentNotFound() {
+            val userId = 1L
+            val tournamentId = 999L
+
+            val performanceEntity = PerformanceByTournamentEntity(
+                id = PerformanceByTournamentId(userId, tournamentId),
+                totalTickets = 10,
+                ticketsWon = 6,
+                ticketsLost = 4,
+                ticketsVoid = 0,
+                totalStake = BigDecimal("1000.00"),
+                totalProfit = BigDecimal("200.00"),
+                roi = BigDecimal("20.0000"),
+                winRate = BigDecimal("60.00"),
+                avgOdd = BigDecimal("2.0000"),
+                firstBetAt = 1704067200000L,
+                lastSettledAt = 1735689600000L
+            )
+
+            every { byTournamentRepository.findByIdUserId(userId) } returns listOf(performanceEntity)
+            every { tournamentRepository.findAll() } returns emptyList()
+
+            val result = performanceAnalyticService.getPerformanceByTournament(userId)
+
+            assertEquals(1, result.size)
+            assertEquals("Torneio Desconhecido", result[0].tournamentName)
+            assertNull(result[0].tournamentLocalName)
         }
     }
 }

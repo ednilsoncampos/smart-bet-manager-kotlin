@@ -96,7 +96,7 @@ class TicketController(
     
     @PostMapping("/refresh-open")
     @Operation(
-        summary = "Atualizar bilhetes em aberto", 
+        summary = "Atualizar bilhetes em aberto",
         description = "Dispara atualização assíncrona dos bilhetes em aberto do usuário. " +
             "Retorna imediatamente com status 202 Accepted enquanto o processamento ocorre em background. " +
             "Ideal para chamar no login do app."
@@ -105,7 +105,7 @@ class TicketController(
         @AuthenticationPrincipal userId: Long
     ): ResponseEntity<RefreshOpenTicketsResponse> {
         val ticketsToRefresh = ticketService.countOpenTicketsToRefresh(userId)
-        
+
         if (ticketsToRefresh == 0) {
             return ResponseEntity.ok(RefreshOpenTicketsResponse(
                 message = "Nenhum bilhete em aberto para atualizar",
@@ -113,14 +113,44 @@ class TicketController(
                 status = RefreshStatus.COMPLETED
             ))
         }
-        
+
         // Dispara processamento assíncrono
         ticketRefreshService.refreshOpenTicketsAsync(userId)
-        
+
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(RefreshOpenTicketsResponse(
             message = "Atualizando $ticketsToRefresh bilhete(s) em background",
             ticketsToRefresh = ticketsToRefresh,
             status = RefreshStatus.PROCESSING
+        ))
+    }
+
+    @PostMapping("/process-analytics")
+    @Operation(
+        summary = "Processar analytics de bilhetes liquidados",
+        description = "Dispara processamento assíncrono de analytics para todos os bilhetes liquidados do usuário. " +
+            "Gera e atualiza dados de performance (overall, por mês, por provider, por mercado, por torneio). " +
+            "Retorna imediatamente com status 202 Accepted enquanto o processamento ocorre em background."
+    )
+    fun processSettledTicketsAnalytics(
+        @AuthenticationPrincipal userId: Long
+    ): ResponseEntity<ProcessAnalyticsResponse> {
+        val ticketsToProcess = ticketService.countSettledTicketsForAnalytics(userId)
+
+        if (ticketsToProcess == 0) {
+            return ResponseEntity.ok(ProcessAnalyticsResponse(
+                message = "Nenhum bilhete liquidado para processar",
+                ticketsToProcess = 0,
+                status = AnalyticsProcessingStatus.COMPLETED
+            ))
+        }
+
+        // Dispara processamento assíncrono
+        ticketRefreshService.processSettledTicketsAnalyticsAsync(userId)
+
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ProcessAnalyticsResponse(
+            message = "Processando analytics de $ticketsToProcess bilhete(s) em background",
+            ticketsToProcess = ticketsToProcess,
+            status = AnalyticsProcessingStatus.PROCESSING
         ))
     }
 }

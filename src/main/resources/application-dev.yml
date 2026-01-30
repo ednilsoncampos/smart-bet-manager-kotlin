@@ -34,3 +34,10 @@ springdoc:
     enabled: true
     operationsSorter: method
   writer-with-default-pretty-printer: true
+  # Habilitar formato YAML
+  default-produces-media-type: application/json
+  default-consumes-media-type: application/json
+
+# CORS - Desenvolvimento (permite localhost em várias portas)
+cors:
+  allowed-origins: http://localhost:3000,http://localhost:4200,http://localhost:8081

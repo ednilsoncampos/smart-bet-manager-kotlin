@@ -1,11 +1,14 @@
 package com.smartbet.application.usecase
 
 import com.smartbet.application.dto.*
+import com.smartbet.common.requireId
 import com.smartbet.domain.entity.BetSelection
 import com.smartbet.domain.entity.BetSelectionComponent
 import com.smartbet.domain.entity.BetTicket
 import com.smartbet.domain.enum.FinancialStatus
+import java.math.BigDecimal
 import com.smartbet.domain.enum.TicketStatus
+import com.smartbet.domain.event.TicketSettledEvent
 import com.smartbet.domain.exception.DuplicateTicketException
 import com.smartbet.domain.service.BetStatusCalculator
 import com.smartbet.infrastructure.persistence.entity.BetSelectionComponentEntity
@@ -20,6 +23,7 @@ import com.smartbet.infrastructure.persistence.repository.TournamentRepository
 import com.smartbet.infrastructure.provider.gateway.HttpGateway
 import com.smartbet.infrastructure.provider.strategy.BettingProviderFactory
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
@@ -33,7 +37,8 @@ class TicketService(
     private val providerRepository: BettingProviderRepository,
     private val tournamentRepository: TournamentRepository,
     private val providerFactory: BettingProviderFactory,
-    private val httpGateway: HttpGateway
+    private val httpGateway: HttpGateway,
+    private val eventPublisher: ApplicationEventPublisher
 ) {
     private val logger = LoggerFactory.getLogger(TicketService::class.java)
     
@@ -84,7 +89,7 @@ class TicketService(
         // Cria a entidade do bilhete
         val ticketEntity = BetTicketEntity(
             userId = userId,
-            providerId = provider.id!!,
+            providerId = provider.id.requireId("Provider"),
             bankrollId = request.bankrollId,
             externalTicketId = parsedData.externalTicketId,
             sourceUrl = request.url,
@@ -109,7 +114,7 @@ class TicketService(
         // Cria as seleções (resolvendo Tournament pelo externalTournamentId)
         val selectionEntities = parsedData.selections.map { selectionData ->
             val tournament = selectionData.externalTournamentId?.let { extId ->
-                tournamentRepository.findByProviderIdAndExternalId(provider.id!!, extId)
+                tournamentRepository.findByProviderIdAndExternalId(provider.id.requireId("Provider"), extId)
             }
 
             BetSelectionEntity(
@@ -135,7 +140,7 @@ class TicketService(
         for (savedSelection in savedSelections) {
             val externalId = savedSelection.externalSelectionId ?: continue
             val components = parsedData.selectionComponents[externalId] ?: continue
-            
+
             if (components.isNotEmpty()) {
                 val componentEntities = components.map { componentData ->
                     BetSelectionComponentEntity(
@@ -150,9 +155,19 @@ class TicketService(
                 logger.debug("Saved {} components for selection {}", components.size, savedSelection.id)
             }
         }
-        
+
+        // Se o bilhete foi importado já liquidado, publica evento para processamento de analytics
+        if (isSettledStatus(savedTicket.ticketStatus)) {
+            val event = buildSettledEvent(savedTicket)
+            eventPublisher.publishEvent(event)
+            logger.info(
+                "Published TicketSettledEvent for imported settled ticket {} (status: {}, profit: {})",
+                savedTicket.id, savedTicket.financialStatus, savedTicket.profitLoss
+            )
+        }
+
         logger.info("Ticket imported successfully: {}", savedTicket.id)
-        
+
         return TicketResponse.fromDomain(savedTicket.toDomain(), provider.name)
     }
     
@@ -173,7 +188,7 @@ class TicketService(
         
         val ticketEntity = BetTicketEntity(
             userId = userId,
-            providerId = provider.id!!,
+            providerId = provider.id.requireId("Provider"),
             bankrollId = request.bankrollId,
             betType = request.betType,
             stake = request.stake,
@@ -261,7 +276,15 @@ class TicketService(
 
         val provider = providerRepository.findById(ticket.providerId).orElse(null)
 
-        return TicketResponse.fromDomain(ticket.toDomain(), provider?.name)
+        // Buscar componentes de todas as seleções
+        val selectionComponentsMap = ticket.selections
+            .mapNotNull { it.id }
+            .associateWith { selectionId ->
+                selectionComponentRepository.findBySelectionId(selectionId)
+                    .map { it.toDomain() }
+            }
+
+        return TicketResponse.fromDomain(ticket.toDomain(), provider?.name, selectionComponentsMap)
     }
     
     /**
@@ -277,6 +300,9 @@ class TicketService(
         if (ticket.userId != userId) {
             throw IllegalAccessException("Acesso negado ao bilhete: ${request.ticketId}")
         }
+
+        // Guarda o status anterior para detectar mudanças
+        val oldStatus = ticket.ticketStatus
 
         // Atualiza os campos
         request.actualPayout?.let { ticket.actualPayout = it }
@@ -300,6 +326,10 @@ class TicketService(
         ticket.roi = statusResult.roi
 
         val savedTicket = ticketRepository.save(ticket)
+
+        // Publica evento de liquidação se o ticket foi liquidado
+        publishSettledEventIfNeeded(oldStatus, savedTicket)
+
         val provider = providerRepository.findById(ticket.providerId).orElse(null)
 
         logger.info("Ticket status updated: {} -> {}", request.ticketId, statusResult.financialStatus)
@@ -371,7 +401,7 @@ class TicketService(
             } catch (e: Exception) {
                 logger.error("Error refreshing ticket {}: {}", ticket.id, e.message)
                 errorDetails.add(RefreshError(
-                    ticketId = ticket.id!!,
+                    ticketId = ticket.id.requireId("Ticket"),
                     externalTicketId = ticket.externalTicketId,
                     errorMessage = e.message ?: "Unknown error"
                 ))
@@ -430,7 +460,7 @@ class TicketService(
             } catch (e: Exception) {
                 logger.error("Error refreshing ticket {}: {}", ticket.id, e.message)
                 errorDetails.add(RefreshError(
-                    ticketId = ticket.id!!,
+                    ticketId = ticket.id.requireId("Ticket"),
                     externalTicketId = ticket.externalTicketId,
                     errorMessage = e.message ?: "Unknown error"
                 ))
@@ -482,10 +512,13 @@ class TicketService(
             logger.debug("Ticket {} status unchanged: {}", ticket.id, ticket.ticketStatus)
             return false
         }
-        
-        logger.info("Ticket {} status changed: {} -> {}", 
+
+        // Guarda o status anterior para detectar mudanças
+        val oldStatus = ticket.ticketStatus
+
+        logger.info("Ticket {} status changed: {} -> {}",
             ticket.id, ticket.ticketStatus, parsedData.ticketStatus)
-        
+
         // Atualiza os campos do bilhete
         ticket.ticketStatus = parsedData.ticketStatus
         ticket.actualPayout = parsedData.actualPayout
@@ -516,9 +549,141 @@ class TicketService(
                 }
             }
         }
-        
-        ticketRepository.save(ticket)
-        
+
+        val savedTicket = ticketRepository.save(ticket)
+
+        // Publica evento de liquidação se o ticket foi liquidado
+        publishSettledEventIfNeeded(oldStatus, savedTicket)
+
         return true
+    }
+
+    /**
+     * Verifica se um status de ticket representa um ticket liquidado.
+     *
+     * @param status Status do ticket
+     * @return true se o ticket está liquidado
+     */
+    private fun isSettledStatus(status: TicketStatus): Boolean {
+        return status in setOf(TicketStatus.WIN, TicketStatus.LOST, TicketStatus.VOID, TicketStatus.CASHOUT)
+    }
+
+    /**
+     * Constrói um TicketSettledEvent a partir de um ticket liquidado.
+     *
+     * @param ticket Entidade do ticket
+     * @return Evento de liquidação
+     */
+    private fun buildSettledEvent(ticket: BetTicketEntity): TicketSettledEvent {
+        // Filtra seleções que possuem marketType (necessário para analytics)
+        val selections = ticket.selections.mapNotNull { selection ->
+            selection.marketType?.let { marketType ->
+                TicketSettledEvent.SelectionData(
+                    marketType = marketType,
+                    tournamentId = selection.tournament?.id,
+                    eventDate = selection.eventDate
+                )
+            }
+        }
+
+        return TicketSettledEvent(
+            ticketId = ticket.id.requireId("Ticket"),
+            userId = ticket.userId,
+            providerId = ticket.providerId,
+            stake = ticket.stake,
+            actualPayout = ticket.actualPayout ?: BigDecimal.ZERO,
+            profitLoss = ticket.profitLoss,
+            roi = ticket.roi,
+            ticketStatus = ticket.ticketStatus,
+            financialStatus = ticket.financialStatus,
+            settledAt = ticket.settledAt ?: System.currentTimeMillis(),
+            selections = selections
+        )
+    }
+
+    /**
+     * Publica evento de liquidação de ticket se o status mudou para liquidado.
+     *
+     * @param oldStatus Status anterior do ticket
+     * @param ticket Ticket atualizado
+     */
+    private fun publishSettledEventIfNeeded(oldStatus: TicketStatus?, ticket: BetTicketEntity) {
+        val wasOpen = oldStatus == null || oldStatus == TicketStatus.OPEN
+        val isNowSettled = isSettledStatus(ticket.ticketStatus)
+
+        if (wasOpen && isNowSettled) {
+            val event = buildSettledEvent(ticket)
+            eventPublisher.publishEvent(event)
+            logger.info(
+                "Published TicketSettledEvent for ticket {} (status: {}, profit: {})",
+                ticket.id, ticket.financialStatus, ticket.profitLoss
+            )
+        }
+    }
+
+    /**
+     * Conta bilhetes liquidados de um usuário que podem ter analytics processados.
+     * Usado para retornar a quantidade antes de iniciar o processamento assíncrono.
+     */
+    fun countSettledTicketsForAnalytics(userId: Long): Int {
+        return ticketRepository.findSettledTicketsByUserId(userId).size
+    }
+
+    /**
+     * Processa analytics de bilhetes liquidados de um usuário.
+     * Busca todos os bilhetes liquidados e publica eventos de analytics para cada um.
+     * Executa de forma assíncrona quando chamado via @Async.
+     *
+     * @param userId ID do usuário
+     * @return Resultado do processamento
+     */
+    @Transactional
+    fun processSettledTicketsAnalytics(userId: Long): AnalyticsProcessingResult {
+        logger.info("Starting analytics processing for settled tickets of user: {}", userId)
+
+        val settledTickets = ticketRepository.findSettledTicketsByUserId(userId)
+
+        if (settledTickets.isEmpty()) {
+            logger.info("No settled tickets to process analytics for user: {}", userId)
+            return AnalyticsProcessingResult(
+                totalProcessed = 0,
+                successful = 0,
+                errors = 0
+            )
+        }
+
+        logger.info("Found {} settled tickets to process analytics for user: {}", settledTickets.size, userId)
+
+        var successful = 0
+        val errorDetails = mutableListOf<AnalyticsProcessingError>()
+
+        for (ticket in settledTickets) {
+            try {
+                // Publica evento de liquidação para processamento de analytics
+                val event = buildSettledEvent(ticket)
+                eventPublisher.publishEvent(event)
+                successful++
+
+                logger.debug("Published analytics event for ticket: {}", ticket.id)
+            } catch (e: Exception) {
+                logger.error("Error publishing analytics event for ticket {}: {}", ticket.id, e.message)
+                errorDetails.add(AnalyticsProcessingError(
+                    ticketId = ticket.id.requireId("Ticket"),
+                    externalTicketId = ticket.externalTicketId,
+                    errorMessage = e.message ?: "Unknown error"
+                ))
+            }
+        }
+
+        val result = AnalyticsProcessingResult(
+            totalProcessed = settledTickets.size,
+            successful = successful,
+            errors = errorDetails.size,
+            errorDetails = errorDetails
+        )
+
+        logger.info("Analytics processing completed for user {}: {}", userId, result)
+
+        return result
     }
 }

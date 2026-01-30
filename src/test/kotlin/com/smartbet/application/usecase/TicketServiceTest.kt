@@ -26,6 +26,7 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
 import java.math.BigDecimal
@@ -56,6 +57,9 @@ class TicketServiceTest {
     @MockK
     private lateinit var httpGateway: HttpGateway
 
+    @MockK
+    private lateinit var eventPublisher: ApplicationEventPublisher
+
     @InjectMockKs
     private lateinit var ticketService: TicketService
     
@@ -65,6 +69,8 @@ class TicketServiceTest {
     @BeforeEach
     fun setup() {
         clearAllMocks()
+        // Mock do event publisher para não interferir nos testes
+        every { eventPublisher.publishEvent(any()) } just Runs
     }
     
     @Nested

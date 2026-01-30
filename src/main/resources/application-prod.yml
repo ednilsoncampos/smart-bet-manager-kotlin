@@ -29,3 +29,8 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+# CORS - Produção (APENAS domínios autorizados)
+# IMPORTANTE: Atualizar com os domínios reais do frontend em produção
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://smartbet.api.br}
