@@ -27,7 +27,8 @@ class AnalyticsAggregationService(
     private val overallRepository: PerformanceOverallRepository,
     private val byMonthRepository: PerformanceByMonthRepository,
     private val byProviderRepository: PerformanceByProviderRepository,
-    private val byMarketRepository: PerformanceByMarketRepository
+    private val byMarketRepository: PerformanceByMarketRepository,
+    private val byTournamentRepository: PerformanceByTournamentRepository
 ) {
     private val logger = LoggerFactory.getLogger(AnalyticsAggregationService::class.java)
 
@@ -35,8 +36,11 @@ class AnalyticsAggregationService(
      * Atualiza todas as tabelas de analytics baseado em um ticket liquidado.
      *
      * @param event Evento de liquidação do ticket
+     *
+     * TODO: Reescrever para usar os campos corretos das entidades (ticketsWon, ticketsLost, uniqueTickets, totalSelections, etc.)
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Deprecated("Precisa ser reescrito para bater com o schema do banco")
     fun updateOnSettlement(event: TicketSettledEvent) {
         logger.info(
             "Processing analytics update for ticket {} (user: {}, status: {}, profit: {})",
@@ -49,6 +53,7 @@ class AnalyticsAggregationService(
             updateByMonth(event)
             updateByProvider(event)
             updateByMarket(event)
+            updateByTournament(event)
 
             logger.info("Analytics successfully updated for ticket {}", event.ticketId)
         } catch (e: Exception) {
@@ -146,6 +151,34 @@ class AnalyticsAggregationService(
         }
     }
 
+    /**
+     * Atualiza a tabela analytics.performance_by_tournament
+     *
+     * Como um ticket pode ter múltiplas seleções em diferentes torneios,
+     * atualiza todos os torneios envolvidos.
+     */
+    private fun updateByTournament(event: TicketSettledEvent) {
+        // Agrupa seleções por torneio
+        val tournamentIds = event.selections.mapNotNull { it.tournamentId }.distinct()
+
+        for (tournamentId in tournamentIds) {
+            val id = PerformanceByTournamentId(event.userId, tournamentId)
+            val existing = byTournamentRepository.findByIdUserIdAndIdTournamentId(event.userId, tournamentId)
+
+            if (existing == null) {
+                // Primeiro ticket com este torneio - cria novo registro
+                val newEntity = createNewByTournament(id, event)
+                byTournamentRepository.save(newEntity)
+                logger.debug("Created new tournament performance for user {} (tournament: {})", event.userId, tournamentId)
+            } else {
+                // Atualiza registro existente
+                updateExistingByTournament(existing, event)
+                byTournamentRepository.save(existing)
+                logger.debug("Updated tournament performance for user {} (tournament: {})", event.userId, tournamentId)
+            }
+        }
+    }
+
     // ========== Criação de Novos Registros ==========
 
     private fun createNewOverall(event: TicketSettledEvent): PerformanceOverallEntity {
@@ -158,21 +191,23 @@ class AnalyticsAggregationService(
             ticketsWon = wins,
             ticketsLost = losses,
             ticketsVoid = voids,
+            ticketsCashedOut = 0,
             totalStake = event.stake,
             totalReturn = totalReturn,
             totalProfit = event.profitLoss,
             roi = event.roi,
             winRate = calculateWinRate(wins, 1),
-            avgOdd = null, // TODO: calcular odd média se necessário
-            currentWinStreak = if (wins > 0) 1 else 0,
-            currentLossStreak = if (losses > 0) 1 else 0,
-            maxWinStreak = if (wins > 0) 1 else 0,
-            maxLossStreak = if (losses > 0) 1 else 0,
+            avgOdd = null,
+            avgStake = event.stake,
+            currentStreak = if (wins > 0) 1 else if (losses > 0) -1 else 0,
+            bestWinStreak = if (wins > 0) 1 else 0,
+            worstLossStreak = if (losses > 0) -1 else 0,
             biggestWin = if (event.profitLoss > BigDecimal.ZERO) event.profitLoss else null,
             biggestLoss = if (event.profitLoss < BigDecimal.ZERO) event.profitLoss else null,
-            highestOddWon = null, // TODO: adicionar se necessário
+            bestRoiTicket = event.roi,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
+            createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis()
         )
     }
@@ -183,14 +218,18 @@ class AnalyticsAggregationService(
         return PerformanceByMonthEntity(
             id = id,
             totalTickets = 1,
-            wins = wins,
-            losses = losses,
-            voids = voids,
+            ticketsWon = wins,
+            ticketsLost = losses,
+            ticketsVoid = voids,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
             winRate = calculateWinRate(wins, 1),
-            lastSettledAt = event.settledAt
+            avgStake = event.stake,
+            firstBetAt = event.settledAt,
+            lastSettledAt = event.settledAt,
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
         )
     }
 
@@ -200,31 +239,63 @@ class AnalyticsAggregationService(
         return PerformanceByProviderEntity(
             id = id,
             totalTickets = 1,
-            wins = wins,
-            losses = losses,
-            voids = voids,
+            ticketsWon = wins,
+            ticketsLost = losses,
+            ticketsVoid = voids,
+            ticketsCashedOut = 0,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
             winRate = calculateWinRate(wins, 1),
-            lastSettledAt = event.settledAt
+            avgOdd = null,
+            firstBetAt = event.settledAt,
+            lastSettledAt = event.settledAt,
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
         )
     }
 
     private fun createNewByMarket(id: PerformanceByMarketId, event: TicketSettledEvent): PerformanceByMarketEntity {
         val (wins, losses, voids) = countTicketsByStatus(event)
+        val selectionsInMarket = event.selections.count { it.marketType == id.marketType }
 
         return PerformanceByMarketEntity(
             id = id,
-            totalTickets = 1,
+            totalSelections = selectionsInMarket,
             wins = wins,
             losses = losses,
             voids = voids,
+            uniqueTickets = 1,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
             winRate = calculateWinRate(wins, 1),
-            lastSettledAt = event.settledAt
+            avgOdd = null,
+            firstBetAt = event.settledAt,
+            lastSettledAt = event.settledAt,
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
+        )
+    }
+
+    private fun createNewByTournament(id: PerformanceByTournamentId, event: TicketSettledEvent): PerformanceByTournamentEntity {
+        val (wins, losses, voids) = countTicketsByStatus(event)
+
+        return PerformanceByTournamentEntity(
+            id = id,
+            totalTickets = 1,
+            ticketsWon = wins,
+            ticketsLost = losses,
+            ticketsVoid = voids,
+            totalStake = event.stake,
+            totalProfit = event.profitLoss,
+            roi = event.roi,
+            winRate = calculateWinRate(wins, 1),
+            avgOdd = null,
+            firstBetAt = event.settledAt,
+            lastSettledAt = event.settledAt,
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
         )
     }
 
@@ -263,76 +334,104 @@ class AnalyticsAggregationService(
         val (wins, losses, voids) = countTicketsByStatus(event)
 
         entity.totalTickets++
-        entity.wins += wins
-        entity.losses += losses
-        entity.voids += voids
+        entity.ticketsWon += wins
+        entity.ticketsLost += losses
+        entity.ticketsVoid += voids
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
-        entity.winRate = calculateWinRate(entity.wins, entity.totalTickets)
+        entity.winRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
         entity.lastSettledAt = event.settledAt
+        entity.updatedAt = System.currentTimeMillis()
     }
 
     private fun updateExistingByProvider(entity: PerformanceByProviderEntity, event: TicketSettledEvent) {
         val (wins, losses, voids) = countTicketsByStatus(event)
 
         entity.totalTickets++
-        entity.wins += wins
-        entity.losses += losses
-        entity.voids += voids
+        entity.ticketsWon += wins
+        entity.ticketsLost += losses
+        entity.ticketsVoid += voids
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
-        entity.winRate = calculateWinRate(entity.wins, entity.totalTickets)
+        entity.winRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
         entity.lastSettledAt = event.settledAt
+        entity.updatedAt = System.currentTimeMillis()
     }
 
     private fun updateExistingByMarket(entity: PerformanceByMarketEntity, event: TicketSettledEvent) {
+        // TODO: Reescrever lógica para usar totalSelections e uniqueTickets
         val (wins, losses, voids) = countTicketsByStatus(event)
+        val selectionsInMarket = event.selections.count { it.marketType == entity.id.marketType }
 
-        entity.totalTickets++
+        entity.totalSelections += selectionsInMarket
+        entity.uniqueTickets++
         entity.wins += wins
         entity.losses += losses
         entity.voids += voids
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
-        entity.winRate = calculateWinRate(entity.wins, entity.totalTickets)
+        entity.winRate = calculateWinRate(entity.wins, entity.uniqueTickets)
         entity.lastSettledAt = event.settledAt
+        entity.updatedAt = System.currentTimeMillis()
+    }
+
+    private fun updateExistingByTournament(entity: PerformanceByTournamentEntity, event: TicketSettledEvent) {
+        val (wins, losses, voids) = countTicketsByStatus(event)
+
+        entity.totalTickets++
+        entity.ticketsWon += wins
+        entity.ticketsLost += losses
+        entity.ticketsVoid += voids
+        entity.totalStake += event.stake
+        entity.totalProfit += event.profitLoss
+        entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
+        entity.winRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
+        entity.lastSettledAt = event.settledAt
+        entity.updatedAt = System.currentTimeMillis()
     }
 
     // ========== Lógica de Gamificação ==========
 
     /**
-     * Atualiza as sequências (streaks) de vitórias e derrotas
+     * Atualiza as sequências (streaks) de vitórias e derrotas.
+     * currentStreak é positivo para vitórias, negativo para derrotas.
      */
     private fun updateStreaks(entity: PerformanceOverallEntity, status: FinancialStatus) {
         when (status) {
             FinancialStatus.FULL_WIN, FinancialStatus.PARTIAL_WIN -> {
-                // Incrementa streak de vitórias
-                entity.currentWinStreak++
-                entity.currentLossStreak = 0
+                // Incrementa streak de vitórias (positivo)
+                entity.currentStreak = if (entity.currentStreak >= 0) {
+                    entity.currentStreak + 1
+                } else {
+                    1 // Reseta se estava em loss streak
+                }
 
-                // Atualiza record
-                if (entity.currentWinStreak > entity.maxWinStreak) {
-                    entity.maxWinStreak = entity.currentWinStreak
+                // Atualiza record de melhor sequência de vitórias
+                if (entity.currentStreak > entity.bestWinStreak) {
+                    entity.bestWinStreak = entity.currentStreak
                 }
             }
 
             FinancialStatus.TOTAL_LOSS, FinancialStatus.PARTIAL_LOSS -> {
-                // Incrementa streak de derrotas
-                entity.currentLossStreak++
-                entity.currentWinStreak = 0
+                // Incrementa streak de derrotas (negativo)
+                entity.currentStreak = if (entity.currentStreak <= 0) {
+                    entity.currentStreak - 1
+                } else {
+                    -1 // Reseta se estava em win streak
+                }
 
-                // Atualiza record
-                if (entity.currentLossStreak > entity.maxLossStreak) {
-                    entity.maxLossStreak = entity.currentLossStreak
+                // Atualiza record de pior sequência de derrotas
+                if (entity.currentStreak < entity.worstLossStreak) {
+                    entity.worstLossStreak = entity.currentStreak
                 }
             }
 
             FinancialStatus.BREAK_EVEN, FinancialStatus.PENDING -> {
-                // Break even ou pending não afeta streaks
-                // Mantém as streaks atuais
+                // Break even ou pending reseta a streak
+                entity.currentStreak = 0
             }
         }
     }

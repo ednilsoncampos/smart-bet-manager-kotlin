@@ -34,14 +34,14 @@ data class PerformanceByMonthEntity(
     @Column(name = "total_tickets", nullable = false)
     var totalTickets: Int = 0,
 
-    @Column(name = "wins", nullable = false)
-    var wins: Int = 0,
+    @Column(name = "tickets_won", nullable = false)
+    var ticketsWon: Int = 0,
 
-    @Column(name = "losses", nullable = false)
-    var losses: Int = 0,
+    @Column(name = "tickets_lost", nullable = false)
+    var ticketsLost: Int = 0,
 
-    @Column(name = "voids", nullable = false)
-    var voids: Int = 0,
+    @Column(name = "tickets_void", nullable = false)
+    var ticketsVoid: Int = 0,
 
     // Métricas financeiras
     @Column(name = "total_stake", nullable = false, precision = 15, scale = 2)
@@ -57,7 +57,19 @@ data class PerformanceByMonthEntity(
     @Column(name = "win_rate", nullable = false, precision = 5, scale = 2)
     var winRate: BigDecimal = BigDecimal.ZERO,
 
-    // Timestamp
+    @Column(name = "avg_stake", precision = 15, scale = 2)
+    var avgStake: BigDecimal? = null,
+
+    // Timestamps
+    @Column(name = "first_bet_at")
+    var firstBetAt: Long? = null,
+
     @Column(name = "last_settled_at", nullable = false)
-    var lastSettledAt: Long = 0
+    var lastSettledAt: Long = 0,
+
+    @Column(name = "created_at", nullable = false)
+    var createdAt: Long = System.currentTimeMillis(),
+
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Long = System.currentTimeMillis()
 )

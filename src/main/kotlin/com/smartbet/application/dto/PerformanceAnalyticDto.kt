@@ -8,72 +8,112 @@ import java.math.BigDecimal
 
 data class OverallPerformanceResponse(
     val totalBets: Long,
-    val settledBets: Long,
-    val openBets: Long,
-    /** Vitórias totais (sem erros) */
-    val fullWins: Long,
-    /** Vitórias parciais (com erros mas lucro) */
-    val partialWins: Long,
-    /** Empates (stake = payout) */
-    val breakEven: Long,
-    /** Derrotas parciais (com acertos mas prejuízo) */
-    val partialLosses: Long,
-    /** Derrotas totais */
-    val totalLosses: Long,
-    /** Total de vitórias (FULL_WIN + PARTIAL_WIN) */
+    /** Total de vitórias (tickets ganhos) */
     val wins: Long,
-    /** Total de derrotas (TOTAL_LOSS + PARTIAL_LOSS) */
+    /** Total de derrotas (tickets perdidos) */
     val losses: Long,
+    /** Tickets anulados/void */
+    val voids: Long,
+    /** Tickets com cashout */
+    val cashedOut: Long,
     val winRate: BigDecimal,
     val totalStaked: BigDecimal,
     val totalReturns: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
-    /** Mediana das odds (mais resistente a outliers que a média) */
-    val medianOdd: BigDecimal,
-    val averageStake: BigDecimal
+    /** Média das odds dos tickets */
+    val avgOdd: BigDecimal?,
+    val avgStake: BigDecimal?,
+
+    // Gamificação: Streaks
+    /** Sequência atual: >0 = vitórias seguidas, <0 = derrotas seguidas, 0 = sem sequência */
+    val currentStreak: Int,
+    /** Melhor sequência de vitórias */
+    val bestWinStreak: Int,
+    /** Pior sequência de derrotas (valor negativo) */
+    val worstLossStreak: Int,
+
+    // Gamificação: Records
+    /** Maior vitória individual */
+    val biggestWin: BigDecimal?,
+    /** Maior perda individual (valor negativo) */
+    val biggestLoss: BigDecimal?,
+    /** Melhor ROI de um ticket */
+    val bestRoiTicket: BigDecimal?,
+
+    // Timestamps
+    val firstBetAt: Long?,
+    val lastSettledAt: Long
+)
+
+data class PerformanceByMonthResponse(
+    val year: Int,
+    val month: Int,
+    val totalBets: Long,
+    /** Total de vitórias (tickets ganhos) */
+    val wins: Long,
+    /** Total de derrotas (tickets perdidos) */
+    val losses: Long,
+    /** Tickets anulados/void */
+    val voids: Long,
+    val winRate: BigDecimal,
+    val totalStaked: BigDecimal,
+    val profitLoss: BigDecimal,
+    val roi: BigDecimal,
+    val avgStake: BigDecimal?,
+
+    // Timestamps
+    val firstBetAt: Long?,
+    val lastSettledAt: Long
 )
 
 data class PerformanceByTournamentResponse(
+    val tournamentId: Long,
     val tournamentName: String,
     /** Nome local/país do torneio */
     val tournamentLocalName: String? = null,
     val totalBets: Long,
-    /** Vitórias totais (sem erros) */
-    val fullWins: Long,
-    /** Vitórias parciais (com erros mas lucro) */
-    val partialWins: Long,
-    /** Empates (stake = payout) */
-    val breakEven: Long,
-    /** Derrotas parciais (com acertos mas prejuízo) */
-    val partialLosses: Long,
-    /** Derrotas totais */
-    val totalLosses: Long,
-    /** Total de vitórias (FULL_WIN + PARTIAL_WIN) */
+    /** Total de vitórias (tickets ganhos) */
     val wins: Long,
-    /** Total de derrotas (TOTAL_LOSS + PARTIAL_LOSS) */
+    /** Total de derrotas (tickets perdidos) */
     val losses: Long,
-    val winRate: BigDecimal
+    /** Tickets anulados/void */
+    val voids: Long,
+    val winRate: BigDecimal,
+    val totalStaked: BigDecimal,
+    val profitLoss: BigDecimal,
+    val roi: BigDecimal,
+    /** Média das odds dos tickets neste torneio */
+    val avgOdd: BigDecimal?,
+
+    // Timestamps
+    val firstBetAt: Long?,
+    val lastSettledAt: Long
 )
 
 data class PerformanceByMarketResponse(
     val marketType: String,
-    val totalBets: Long,
-    /** Vitórias totais (sem erros) */
-    val fullWins: Long,
-    /** Vitórias parciais (com erros mas lucro) */
-    val partialWins: Long,
-    /** Empates (stake = payout) */
-    val breakEven: Long,
-    /** Derrotas parciais (com acertos mas prejuízo) */
-    val partialLosses: Long,
-    /** Derrotas totais */
-    val totalLosses: Long,
-    /** Total de vitórias (FULL_WIN + PARTIAL_WIN) */
+    /** Total de seleções neste mercado (uma aposta múltipla conta N vezes) */
+    val totalSelections: Long,
+    /** Número de tickets únicos que incluem esse mercado */
+    val uniqueTickets: Long,
+    /** Seleções ganhas neste mercado */
     val wins: Long,
-    /** Total de derrotas (TOTAL_LOSS + PARTIAL_LOSS) */
+    /** Seleções perdidas neste mercado */
     val losses: Long,
+    /** Seleções anuladas neste mercado */
+    val voids: Long,
     val winRate: BigDecimal,
+    val totalStaked: BigDecimal,
+    val profitLoss: BigDecimal,
+    val roi: BigDecimal,
+    /** Média das odds das seleções neste mercado */
+    val avgOdd: BigDecimal?,
+
+    // Timestamps
+    val firstBetAt: Long?,
+    val lastSettledAt: Long,
+
     /** Componentes individuais do Bet Builder (apenas quando marketType = "Criar Aposta") */
     val betBuilderComponents: List<BetBuilderComponentStats>? = null
 )
@@ -103,21 +143,22 @@ data class PerformanceByProviderResponse(
     val providerId: Long,
     val providerName: String,
     val totalBets: Long,
-    /** Vitórias totais (sem erros) */
-    val fullWins: Long,
-    /** Vitórias parciais (com erros mas lucro) */
-    val partialWins: Long,
-    /** Empates (stake = payout) */
-    val breakEven: Long,
-    /** Derrotas parciais (com acertos mas prejuízo) */
-    val partialLosses: Long,
-    /** Derrotas totais */
-    val totalLosses: Long,
-    /** Total de vitórias (FULL_WIN + PARTIAL_WIN) */
+    /** Total de vitórias (tickets ganhos) */
     val wins: Long,
-    /** Total de derrotas (TOTAL_LOSS + PARTIAL_LOSS) */
+    /** Total de derrotas (tickets perdidos) */
     val losses: Long,
+    /** Tickets anulados/void */
+    val voids: Long,
+    /** Tickets com cashout */
+    val cashedOut: Long,
     val winRate: BigDecimal,
+    val totalStaked: BigDecimal,
     val profitLoss: BigDecimal,
-    val roi: BigDecimal
+    val roi: BigDecimal,
+    /** Média das odds dos tickets */
+    val avgOdd: BigDecimal?,
+
+    // Timestamps
+    val firstBetAt: Long?,
+    val lastSettledAt: Long
 )

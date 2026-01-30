@@ -6,6 +6,7 @@ import com.smartbet.domain.entity.BetSelection
 import com.smartbet.domain.entity.BetSelectionComponent
 import com.smartbet.domain.entity.BetTicket
 import com.smartbet.domain.enum.FinancialStatus
+import java.math.BigDecimal
 import com.smartbet.domain.enum.TicketStatus
 import com.smartbet.domain.event.TicketSettledEvent
 import com.smartbet.domain.exception.DuplicateTicketException
@@ -564,12 +565,15 @@ class TicketService(
      * @return Evento de liquidação
      */
     private fun buildSettledEvent(ticket: BetTicketEntity): TicketSettledEvent {
-        val selections = ticket.selections.map { selection ->
-            TicketSettledEvent.SelectionData(
-                marketType = selection.marketType,
-                tournamentId = selection.tournament?.id,
-                eventDate = selection.eventDate
-            )
+        // Filtra seleções que possuem marketType (necessário para analytics)
+        val selections = ticket.selections.mapNotNull { selection ->
+            selection.marketType?.let { marketType ->
+                TicketSettledEvent.SelectionData(
+                    marketType = marketType,
+                    tournamentId = selection.tournament?.id,
+                    eventDate = selection.eventDate
+                )
+            }
         }
 
         return TicketSettledEvent(
@@ -577,7 +581,7 @@ class TicketService(
             userId = ticket.userId,
             providerId = ticket.providerId,
             stake = ticket.stake,
-            actualPayout = ticket.actualPayout,
+            actualPayout = ticket.actualPayout ?: BigDecimal.ZERO,
             profitLoss = ticket.profitLoss,
             roi = ticket.roi,
             ticketStatus = ticket.ticketStatus,

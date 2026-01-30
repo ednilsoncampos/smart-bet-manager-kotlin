@@ -5,28 +5,28 @@ import java.io.Serializable
 import java.math.BigDecimal
 
 /**
- * ID composto para PerformanceByProviderEntity
+ * ID composto para PerformanceByTournamentEntity
  */
 @Embeddable
-data class PerformanceByProviderId(
+data class PerformanceByTournamentId(
     @Column(name = "user_id", nullable = false)
     val userId: Long = 0,
 
-    @Column(name = "provider_id", nullable = false)
-    val providerId: Long = 0
+    @Column(name = "tournament_id", nullable = false)
+    val tournamentId: Long = 0
 ) : Serializable
 
 /**
- * Entidade JPA para a tabela analytics.performance_by_provider
+ * Entidade JPA para a tabela analytics.performance_by_tournament
  *
- * Armazena a performance do apostador por casa de apostas,
- * permitindo comparar resultados entre diferentes providers.
+ * Armazena a performance do apostador por torneio/campeonato,
+ * permitindo identificar competições mais/menos lucrativas.
  */
 @Entity
-@Table(name = "performance_by_provider", schema = "analytics")
-data class PerformanceByProviderEntity(
+@Table(name = "performance_by_tournament", schema = "analytics")
+data class PerformanceByTournamentEntity(
     @EmbeddedId
-    val id: PerformanceByProviderId,
+    val id: PerformanceByTournamentId,
 
     // Contadores de tickets
     @Column(name = "total_tickets", nullable = false)
@@ -40,9 +40,6 @@ data class PerformanceByProviderEntity(
 
     @Column(name = "tickets_void", nullable = false)
     var ticketsVoid: Int = 0,
-
-    @Column(name = "tickets_cashed_out", nullable = false)
-    var ticketsCashedOut: Int = 0,
 
     // Métricas financeiras
     @Column(name = "total_stake", nullable = false, precision = 15, scale = 2)

@@ -29,6 +29,9 @@ data class PerformanceOverallEntity(
     @Column(name = "tickets_void", nullable = false)
     var ticketsVoid: Int = 0,
 
+    @Column(name = "tickets_cashed_out", nullable = false)
+    var ticketsCashedOut: Int = 0,
+
     // Métricas financeiras
     @Column(name = "total_stake", nullable = false, precision = 15, scale = 2)
     var totalStake: BigDecimal = BigDecimal.ZERO,
@@ -49,18 +52,18 @@ data class PerformanceOverallEntity(
     @Column(name = "avg_odd", precision = 10, scale = 4)
     var avgOdd: BigDecimal? = null,
 
+    @Column(name = "avg_stake", precision = 15, scale = 2)
+    var avgStake: BigDecimal? = null,
+
     // Gamificação: Streaks
-    @Column(name = "current_win_streak", nullable = false)
-    var currentWinStreak: Int = 0,
+    @Column(name = "current_streak")
+    var currentStreak: Int = 0,
 
-    @Column(name = "current_loss_streak", nullable = false)
-    var currentLossStreak: Int = 0,
+    @Column(name = "best_win_streak")
+    var bestWinStreak: Int = 0,
 
-    @Column(name = "max_win_streak", nullable = false)
-    var maxWinStreak: Int = 0,
-
-    @Column(name = "max_loss_streak", nullable = false)
-    var maxLossStreak: Int = 0,
+    @Column(name = "worst_loss_streak")
+    var worstLossStreak: Int = 0,
 
     // Gamificação: Records
     @Column(name = "biggest_win", precision = 15, scale = 2)
@@ -69,8 +72,8 @@ data class PerformanceOverallEntity(
     @Column(name = "biggest_loss", precision = 15, scale = 2)
     var biggestLoss: BigDecimal? = null,
 
-    @Column(name = "highest_odd_won", precision = 10, scale = 4)
-    var highestOddWon: BigDecimal? = null,
+    @Column(name = "best_roi_ticket", precision = 10, scale = 4)
+    var bestRoiTicket: BigDecimal? = null,
 
     // Timestamps
     @Column(name = "first_bet_at")
@@ -78,6 +81,9 @@ data class PerformanceOverallEntity(
 
     @Column(name = "last_settled_at", nullable = false)
     var lastSettledAt: Long = 0,
+
+    @Column(name = "created_at", nullable = false)
+    var createdAt: Long = System.currentTimeMillis(),
 
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Long = System.currentTimeMillis()

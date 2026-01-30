@@ -43,7 +43,16 @@ class AnalyticsController(
         val performance = performanceAnalyticService.getPerformanceByMarket(userId)
         return ResponseEntity.ok(performance)
     }
-    
+
+    @GetMapping("/by-month")
+    @Operation(summary = "Performance por mês", description = "Retorna performance agrupada por mês (ordenado do mais recente para o mais antigo)")
+    fun getPerformanceByMonth(
+        @AuthenticationPrincipal userId: Long
+    ): ResponseEntity<List<PerformanceByMonthResponse>> {
+        val performance = performanceAnalyticService.getPerformanceByMonth(userId)
+        return ResponseEntity.ok(performance)
+    }
+
     @GetMapping("/by-provider")
     @Operation(summary = "Performance por casa", description = "Retorna performance agrupada por casa de apostas")
     fun getPerformanceByProvider(

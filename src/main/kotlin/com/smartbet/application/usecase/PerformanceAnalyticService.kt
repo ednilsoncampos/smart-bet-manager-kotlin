@@ -6,336 +6,240 @@ import com.smartbet.domain.enum.SelectionStatus
 import com.smartbet.domain.enum.TicketStatus
 import com.smartbet.infrastructure.persistence.entity.BetSelectionEntity
 import com.smartbet.infrastructure.persistence.entity.BetTicketEntity
-import com.smartbet.infrastructure.persistence.repository.BetSelectionComponentRepository
-import com.smartbet.infrastructure.persistence.repository.BetSelectionRepository
-import com.smartbet.infrastructure.persistence.repository.BetTicketRepository
-import com.smartbet.infrastructure.persistence.repository.BettingProviderRepository
-import org.springframework.data.domain.PageRequest
+import com.smartbet.infrastructure.persistence.repository.*
 import org.springframework.stereotype.Service
 import java.math.BigDecimal
 import java.math.RoundingMode
 
+/**
+ * Service de analytics que utiliza as tabelas pré-agregadas do schema analytics.
+ *
+ * Este service lê dados das tabelas analytics.performance_* que são atualizadas
+ * incrementalmente via eventos pelo AnalyticsAggregationService.
+ */
 @Service
 class PerformanceAnalyticService(
-    private val ticketRepository: BetTicketRepository,
-    private val selectionRepository: BetSelectionRepository,
+    private val overallRepository: PerformanceOverallRepository,
+    private val byProviderRepository: PerformanceByProviderRepository,
+    private val byMarketRepository: PerformanceByMarketRepository,
+    private val byMonthRepository: PerformanceByMonthRepository,
+    private val byTournamentRepository: PerformanceByTournamentRepository,
+    private val providerRepository: BettingProviderRepository,
+    private val tournamentRepository: TournamentRepository,
     private val selectionComponentRepository: BetSelectionComponentRepository,
-    private val providerRepository: BettingProviderRepository
+    private val ticketRepository: BetTicketRepository
 ) {
     
     /**
-     * Retorna a performance geral do usuário.
+     * Retorna a performance geral do usuário usando a tabela analytics.performance_overall.
      */
     fun getOverallPerformance(userId: Long): OverallPerformanceResponse {
-        val pageable = PageRequest.of(0, Int.MAX_VALUE)
-        val allTickets = ticketRepository.findByUserId(userId, pageable).content
-        
-        val totalBets = allTickets.size.toLong()
-        val settledBets = allTickets.count { it.ticketStatus != TicketStatus.OPEN }.toLong()
-        val openBets = allTickets.count { it.ticketStatus == TicketStatus.OPEN }.toLong()
-        
-        // Contagem detalhada por status financeiro
-        val fullWins = allTickets.count { it.financialStatus == FinancialStatus.FULL_WIN }.toLong()
-        val partialWins = allTickets.count { it.financialStatus == FinancialStatus.PARTIAL_WIN }.toLong()
-        val breakEven = allTickets.count { it.financialStatus == FinancialStatus.BREAK_EVEN }.toLong()
-        val partialLosses = allTickets.count { it.financialStatus == FinancialStatus.PARTIAL_LOSS }.toLong()
-        val totalLosses = allTickets.count { it.financialStatus == FinancialStatus.TOTAL_LOSS }.toLong()
-        
-        // Totais agregados
-        val wins = fullWins + partialWins
-        val losses = totalLosses + partialLosses
-        
-        val winRate = if (settledBets > 0) {
-            BigDecimal.valueOf(wins)
-                .divide(BigDecimal.valueOf(settledBets), 4, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-        } else {
-            BigDecimal.ZERO
-        }
-        
-        val settledTickets = allTickets.filter { it.ticketStatus != TicketStatus.OPEN }
-        val totalStaked = settledTickets.fold(BigDecimal.ZERO) { acc, ticket -> acc + ticket.stake }
-        val totalReturns = settledTickets.fold(BigDecimal.ZERO) { acc, ticket -> acc + (ticket.actualPayout ?: BigDecimal.ZERO) }
-        val profitLoss = totalReturns - totalStaked
-        
-        val roi = if (totalStaked > BigDecimal.ZERO) {
-            profitLoss
-                .divide(totalStaked, 4, RoundingMode.HALF_UP)
-                .multiply(BigDecimal.valueOf(100))
-        } else {
-            BigDecimal.ZERO
-        }
-        
-        // Calcula a mediana das odds (mais resistente a outliers)
-        val medianOdd = if (allTickets.isNotEmpty()) {
-            val sortedOdds = allTickets.map { it.totalOdd }.sorted()
-            val size = sortedOdds.size
-            if (size % 2 == 0) {
-                // Média dos dois valores centrais
-                (sortedOdds[size / 2 - 1] + sortedOdds[size / 2])
-                    .divide(BigDecimal.valueOf(2), 4, RoundingMode.HALF_UP)
-            } else {
-                // Valor central
-                sortedOdds[size / 2]
-            }
-        } else {
-            BigDecimal.ZERO
-        }
-        
-        val averageStake = if (allTickets.isNotEmpty()) {
-            allTickets.fold(BigDecimal.ZERO) { acc, ticket -> acc + ticket.stake }
-                .divide(BigDecimal.valueOf(allTickets.size.toLong()), 2, RoundingMode.HALF_UP)
-        } else {
-            BigDecimal.ZERO
-        }
-        
+        val performance = overallRepository.findByUserId(userId)
+            ?: return createEmptyOverallResponse()
+
         return OverallPerformanceResponse(
-            totalBets = totalBets,
-            settledBets = settledBets,
-            openBets = openBets,
-            fullWins = fullWins,
-            partialWins = partialWins,
-            breakEven = breakEven,
-            partialLosses = partialLosses,
-            totalLosses = totalLosses,
-            wins = wins,
-            losses = losses,
-            winRate = winRate,
-            totalStaked = totalStaked,
-            totalReturns = totalReturns,
-            profitLoss = profitLoss,
-            roi = roi,
-            medianOdd = medianOdd,
-            averageStake = averageStake
+            totalBets = performance.totalTickets.toLong(),
+            wins = performance.ticketsWon.toLong(),
+            losses = performance.ticketsLost.toLong(),
+            voids = performance.ticketsVoid.toLong(),
+            cashedOut = performance.ticketsCashedOut.toLong(),
+            winRate = performance.winRate,
+            totalStaked = performance.totalStake,
+            totalReturns = performance.totalReturn,
+            profitLoss = performance.totalProfit,
+            roi = performance.roi,
+            avgOdd = performance.avgOdd,
+            avgStake = performance.avgStake,
+            currentStreak = performance.currentStreak,
+            bestWinStreak = performance.bestWinStreak,
+            worstLossStreak = performance.worstLossStreak,
+            biggestWin = performance.biggestWin,
+            biggestLoss = performance.biggestLoss,
+            bestRoiTicket = performance.bestRoiTicket,
+            firstBetAt = performance.firstBetAt,
+            lastSettledAt = performance.lastSettledAt
         )
     }
+
+    private fun createEmptyOverallResponse() = OverallPerformanceResponse(
+        totalBets = 0,
+        wins = 0,
+        losses = 0,
+        voids = 0,
+        cashedOut = 0,
+        winRate = BigDecimal.ZERO,
+        totalStaked = BigDecimal.ZERO,
+        totalReturns = BigDecimal.ZERO,
+        profitLoss = BigDecimal.ZERO,
+        roi = BigDecimal.ZERO,
+        avgOdd = null,
+        avgStake = null,
+        currentStreak = 0,
+        bestWinStreak = 0,
+        worstLossStreak = 0,
+        biggestWin = null,
+        biggestLoss = null,
+        bestRoiTicket = null,
+        firstBetAt = null,
+        lastSettledAt = 0
+    )
     
     /**
-     * Retorna a performance por campeonato/torneio.
+     * Retorna a performance por campeonato/torneio usando a tabela analytics.performance_by_tournament.
      */
     fun getPerformanceByTournament(userId: Long): List<PerformanceByTournamentResponse> {
-        val allTickets = ticketRepository.findByUserIdWithSelections(userId)
-            .filter { it.ticketStatus != TicketStatus.OPEN }
+        val performances = byTournamentRepository.findByIdUserId(userId)
+        val tournaments = tournamentRepository.findAll().associateBy { it.id }
 
-        // Agrupa por torneio através das seleções
-        data class TournamentKey(val tournamentName: String, val tournamentLocalName: String?)
-        data class TournamentData(val key: TournamentKey, val selection: BetSelectionEntity, val financialStatus: FinancialStatus)
-
-        val selectionsByTournament: Map<TournamentKey, List<TournamentData>> = allTickets
-            .flatMap { ticket: BetTicketEntity ->
-                ticket.selections.mapNotNull { selection: BetSelectionEntity ->
-                    selection.tournament?.name?.let { name: String ->
-                        val key = TournamentKey(name, selection.tournament?.localName)
-                        TournamentData(key, selection, ticket.financialStatus)
-                    }
-                }
-            }
-            .groupBy { it.key }
-
-        return selectionsByTournament.map { (key: TournamentKey, selections: List<TournamentData>) ->
-            val totalBets = selections.size.toLong()
-
-            // Contagem detalhada por status financeiro do ticket
-            val fullWins = selections.count { it.financialStatus == FinancialStatus.FULL_WIN }.toLong()
-            val partialWins = selections.count { it.financialStatus == FinancialStatus.PARTIAL_WIN }.toLong()
-            val breakEven = selections.count { it.financialStatus == FinancialStatus.BREAK_EVEN }.toLong()
-            val partialLosses = selections.count { it.financialStatus == FinancialStatus.PARTIAL_LOSS }.toLong()
-            val totalLosses = selections.count { it.financialStatus == FinancialStatus.TOTAL_LOSS }.toLong()
-
-            // Totais agregados
-            val wins = fullWins + partialWins
-            val losses = totalLosses + partialLosses
-
-            val winRate = if (totalBets > 0) {
-                BigDecimal.valueOf(wins)
-                    .divide(BigDecimal.valueOf(totalBets), 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100))
-            } else {
-                BigDecimal.ZERO
-            }
+        return performances.map { performance ->
+            val tournament = tournaments[performance.id.tournamentId]
 
             PerformanceByTournamentResponse(
-                tournamentName = key.tournamentName,
-                tournamentLocalName = key.tournamentLocalName,
-                totalBets = totalBets,
-                fullWins = fullWins,
-                partialWins = partialWins,
-                breakEven = breakEven,
-                partialLosses = partialLosses,
-                totalLosses = totalLosses,
-                wins = wins,
-                losses = losses,
-                winRate = winRate
+                tournamentId = performance.id.tournamentId,
+                tournamentName = tournament?.name ?: "Torneio Desconhecido",
+                tournamentLocalName = tournament?.localName,
+                totalBets = performance.totalTickets.toLong(),
+                wins = performance.ticketsWon.toLong(),
+                losses = performance.ticketsLost.toLong(),
+                voids = performance.ticketsVoid.toLong(),
+                winRate = performance.winRate,
+                totalStaked = performance.totalStake,
+                profitLoss = performance.totalProfit,
+                roi = performance.roi,
+                avgOdd = performance.avgOdd,
+                firstBetAt = performance.firstBetAt,
+                lastSettledAt = performance.lastSettledAt
             )
         }
     }
-    
+
     /**
-     * Retorna a performance por tipo de mercado.
+     * Retorna a performance mensal do usuário usando a tabela analytics.performance_by_month.
+     * Os dados são retornados ordenados por ano e mês (mais recente primeiro).
+     */
+    fun getPerformanceByMonth(userId: Long): List<PerformanceByMonthResponse> {
+        val performances = byMonthRepository.findByIdUserIdOrderByIdYearDescIdMonthDesc(userId)
+
+        return performances.map { performance ->
+            PerformanceByMonthResponse(
+                year = performance.id.year,
+                month = performance.id.month,
+                totalBets = performance.totalTickets.toLong(),
+                wins = performance.ticketsWon.toLong(),
+                losses = performance.ticketsLost.toLong(),
+                voids = performance.ticketsVoid.toLong(),
+                winRate = performance.winRate,
+                totalStaked = performance.totalStake,
+                profitLoss = performance.totalProfit,
+                roi = performance.roi,
+                avgStake = performance.avgStake,
+                firstBetAt = performance.firstBetAt,
+                lastSettledAt = performance.lastSettledAt
+            )
+        }
+    }
+
+    /**
+     * Retorna a performance por tipo de mercado usando a tabela analytics.performance_by_market.
      */
     fun getPerformanceByMarket(userId: Long): List<PerformanceByMarketResponse> {
-        val allTickets = ticketRepository.findByUserIdWithSelections(userId)
-            .filter { it.ticketStatus != TicketStatus.OPEN }
+        val performances = byMarketRepository.findByIdUserId(userId)
 
-        // Busca componentes de Bet Builder para o usuário
-        val betBuilderComponents = selectionComponentRepository.findByUserId(userId)
-        val componentsBySelection = betBuilderComponents.groupBy { it.selection?.id }
-
-        // Agrupa por mercado através das seleções
-        data class MarketData(val marketType: String, val selection: BetSelectionEntity, val financialStatus: FinancialStatus)
-
-        val selectionsByMarket: Map<String, List<MarketData>> = allTickets
-            .flatMap { ticket: BetTicketEntity ->
-                ticket.selections.mapNotNull { selection: BetSelectionEntity ->
-                    selection.marketType?.let { market: String ->
-                        MarketData(market, selection, ticket.financialStatus)
-                    }
-                }
-            }
-            .groupBy { it.marketType }
-
-        return selectionsByMarket.map { (marketType: String, selections: List<MarketData>) ->
-            val totalBets = selections.size.toLong()
-
-            // Contagem detalhada por status financeiro do ticket
-            val fullWins = selections.count { it.financialStatus == FinancialStatus.FULL_WIN }.toLong()
-            val partialWins = selections.count { it.financialStatus == FinancialStatus.PARTIAL_WIN }.toLong()
-            val breakEven = selections.count { it.financialStatus == FinancialStatus.BREAK_EVEN }.toLong()
-            val partialLosses = selections.count { it.financialStatus == FinancialStatus.PARTIAL_LOSS }.toLong()
-            val totalLosses = selections.count { it.financialStatus == FinancialStatus.TOTAL_LOSS }.toLong()
-
-            // Totais agregados
-            val wins = fullWins + partialWins
-            val losses = totalLosses + partialLosses
-
-            val winRate = if (totalBets > 0) {
-                BigDecimal.valueOf(wins)
-                    .divide(BigDecimal.valueOf(totalBets), 4, RoundingMode.HALF_UP)
-                    .multiply(BigDecimal.valueOf(100))
-            } else {
-                BigDecimal.ZERO
-            }
-
-            // Se for "Criar Aposta" (Bet Builder), agrupa os componentes individuais por evento
-            val betBuilderStats = if (marketType == "Criar Aposta") {
-                val allComponentsForMarket = selections
-                    .flatMap { marketData -> componentsBySelection[marketData.selection.id] ?: emptyList() }
-
-                // Agrupa por eventName + marketName + selectionName
-                allComponentsForMarket
-                    .groupBy { component ->
-                        val eventName = component.selection?.eventName ?: "Evento Desconhecido"
-                        "${eventName}||${component.marketName}||${component.selectionName}"
-                    }
-                    .map { (key, components) ->
-                        val parts = key.split("||")
-                        val compEventName = parts[0]
-                        val compMarketName = parts[1]
-                        val compSelectionName = parts[2]
-
-                        val compTotal = components.size.toLong()
-                        val compWins = components.count { it.status == SelectionStatus.WON }.toLong()
-                        val compLosses = components.count { it.status == SelectionStatus.LOST }.toLong()
-                        val compWinRate = if (compTotal > 0) {
-                            BigDecimal.valueOf(compWins)
-                                .divide(BigDecimal.valueOf(compTotal), 4, RoundingMode.HALF_UP)
-                                .multiply(BigDecimal.valueOf(100))
-                        } else {
-                            BigDecimal.ZERO
-                        }
-
-                        BetBuilderComponentStats(
-                            eventName = compEventName,
-                            marketName = compMarketName,
-                            selectionName = compSelectionName,
-                            totalBets = compTotal,
-                            wins = compWins,
-                            losses = compLosses,
-                            winRate = compWinRate
-                        )
-                    }
-                    .sortedByDescending { it.totalBets }
+        return performances.map { performance ->
+            // Se for "Criar Aposta" (Bet Builder), busca os componentes individuais
+            val betBuilderStats = if (performance.id.marketType == "Criar Aposta") {
+                getBetBuilderComponentStats(userId)
             } else {
                 null
             }
 
             PerformanceByMarketResponse(
-                marketType = marketType,
-                totalBets = totalBets,
-                fullWins = fullWins,
-                partialWins = partialWins,
-                breakEven = breakEven,
-                partialLosses = partialLosses,
-                totalLosses = totalLosses,
-                wins = wins,
-                losses = losses,
-                winRate = winRate,
+                marketType = performance.id.marketType,
+                totalSelections = performance.totalSelections.toLong(),
+                uniqueTickets = performance.uniqueTickets.toLong(),
+                wins = performance.wins.toLong(),
+                losses = performance.losses.toLong(),
+                voids = performance.voids.toLong(),
+                winRate = performance.winRate,
+                totalStaked = performance.totalStake,
+                profitLoss = performance.totalProfit,
+                roi = performance.roi,
+                avgOdd = performance.avgOdd,
+                firstBetAt = performance.firstBetAt,
+                lastSettledAt = performance.lastSettledAt,
                 betBuilderComponents = betBuilderStats
             )
         }
     }
-    
+
     /**
-     * Retorna a performance por casa de apostas.
-     * Inclui contagem detalhada de todos os status financeiros.
+     * Obtém estatísticas detalhadas dos componentes de Bet Builder.
      */
-    fun getPerformanceByProvider(userId: Long): List<PerformanceByProviderResponse> {
-        val pageable = PageRequest.of(0, Int.MAX_VALUE)
-        val allTickets = ticketRepository.findByUserId(userId, pageable).content
-        val providers = providerRepository.findAll().associateBy { it.id }
-        
-        return allTickets
-            .filter { it.ticketStatus != TicketStatus.OPEN }
-            .groupBy { it.providerId }
-            .map { (providerId: Long, tickets: List<BetTicketEntity>) ->
-                val provider = providers[providerId]
-                val totalBets = tickets.size.toLong()
-                
-                // Contagem detalhada por status financeiro
-                val fullWins = tickets.count { it.financialStatus == FinancialStatus.FULL_WIN }.toLong()
-                val partialWins = tickets.count { it.financialStatus == FinancialStatus.PARTIAL_WIN }.toLong()
-                val breakEven = tickets.count { it.financialStatus == FinancialStatus.BREAK_EVEN }.toLong()
-                val partialLosses = tickets.count { it.financialStatus == FinancialStatus.PARTIAL_LOSS }.toLong()
-                val totalLosses = tickets.count { it.financialStatus == FinancialStatus.TOTAL_LOSS }.toLong()
-                
-                // Totais agregados
-                val wins = fullWins + partialWins
-                val losses = totalLosses + partialLosses
-                
-                val winRate = if (totalBets > 0) {
-                    BigDecimal.valueOf(wins)
-                        .divide(BigDecimal.valueOf(totalBets), 4, RoundingMode.HALF_UP)
+    private fun getBetBuilderComponentStats(userId: Long): List<BetBuilderComponentStats> {
+        val betBuilderComponents = selectionComponentRepository.findByUserId(userId)
+
+        // Agrupa por eventName + marketName + selectionName
+        return betBuilderComponents
+            .groupBy { component ->
+                val eventName = component.selection?.eventName ?: "Evento Desconhecido"
+                "${eventName}||${component.marketName}||${component.selectionName}"
+            }
+            .map { (key, components) ->
+                val parts = key.split("||")
+                val compEventName = parts[0]
+                val compMarketName = parts[1]
+                val compSelectionName = parts[2]
+
+                val compTotal = components.size.toLong()
+                val compWins = components.count { it.status == SelectionStatus.WON }.toLong()
+                val compLosses = components.count { it.status == SelectionStatus.LOST }.toLong()
+                val compWinRate = if (compTotal > 0) {
+                    BigDecimal.valueOf(compWins)
+                        .divide(BigDecimal.valueOf(compTotal), 4, java.math.RoundingMode.HALF_UP)
                         .multiply(BigDecimal.valueOf(100))
                 } else {
                     BigDecimal.ZERO
                 }
-                
-                val totalStaked = tickets.fold(BigDecimal.ZERO) { acc, ticket -> acc + ticket.stake }
-                val profitLoss = tickets.fold(BigDecimal.ZERO) { acc, ticket -> acc + ticket.profitLoss }
-                
-                val roi = if (totalStaked > BigDecimal.ZERO) {
-                    profitLoss
-                        .divide(totalStaked, 4, RoundingMode.HALF_UP)
-                        .multiply(BigDecimal.valueOf(100))
-                } else {
-                    BigDecimal.ZERO
-                }
-                
-                PerformanceByProviderResponse(
-                    providerId = providerId,
-                    providerName = provider?.name ?: "Desconhecido",
-                    totalBets = totalBets,
-                    fullWins = fullWins,
-                    partialWins = partialWins,
-                    breakEven = breakEven,
-                    partialLosses = partialLosses,
-                    totalLosses = totalLosses,
-                    wins = wins,
-                    losses = losses,
-                    winRate = winRate,
-                    profitLoss = profitLoss,
-                    roi = roi
+
+                BetBuilderComponentStats(
+                    eventName = compEventName,
+                    marketName = compMarketName,
+                    selectionName = compSelectionName,
+                    totalBets = compTotal,
+                    wins = compWins,
+                    losses = compLosses,
+                    winRate = compWinRate
                 )
             }
+            .sortedByDescending { it.totalBets }
+    }
+    
+    /**
+     * Retorna a performance por casa de apostas usando a tabela analytics.performance_by_provider.
+     */
+    fun getPerformanceByProvider(userId: Long): List<PerformanceByProviderResponse> {
+        val performances = byProviderRepository.findByIdUserId(userId)
+        val providers = providerRepository.findAll().associateBy { it.id }
+
+        return performances.map { performance ->
+            val provider = providers[performance.id.providerId]
+
+            PerformanceByProviderResponse(
+                providerId = performance.id.providerId,
+                providerName = provider?.name ?: "Desconhecido",
+                totalBets = performance.totalTickets.toLong(),
+                wins = performance.ticketsWon.toLong(),
+                losses = performance.ticketsLost.toLong(),
+                voids = performance.ticketsVoid.toLong(),
+                cashedOut = performance.ticketsCashedOut.toLong(),
+                winRate = performance.winRate,
+                totalStaked = performance.totalStake,
+                profitLoss = performance.totalProfit,
+                roi = performance.roi,
+                avgOdd = performance.avgOdd,
+                firstBetAt = performance.firstBetAt,
+                lastSettledAt = performance.lastSettledAt
+            )
+        }
     }
 }
