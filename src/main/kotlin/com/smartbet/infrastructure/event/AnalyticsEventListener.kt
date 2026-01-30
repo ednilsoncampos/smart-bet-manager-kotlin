@@ -36,17 +36,15 @@ class AnalyticsEventListener(
      * - @Retryable: Retenta até 3 vezes com backoff exponencial (1s, 2s, 4s)
      *
      * @param event Evento de liquidação do ticket
-     *
-     * TODO: Atualizar AnalyticsAggregationService para usar campos corretos das entidades
      */
-    // @EventListener
-    // @Async("analyticsTaskExecutor")
-    // @Transactional(propagation = Propagation.REQUIRES_NEW)
-    // @Retryable(
-    //     maxAttempts = 3,
-    //     backoff = Backoff(delay = 1000, multiplier = 2.0),
-    //     recover = "recoverAnalyticsUpdate"
-    // )
+    @EventListener
+    @Async("analyticsTaskExecutor")
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Retryable(
+        maxAttempts = 3,
+        backoff = Backoff(delay = 1000, multiplier = 2.0),
+        recover = "recoverAnalyticsUpdate"
+    )
     fun onTicketSettled(event: TicketSettledEvent) {
         logger.debug(
             "Received TicketSettledEvent: ticket={}, user={}, status={}",

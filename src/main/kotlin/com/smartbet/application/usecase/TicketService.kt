@@ -140,7 +140,7 @@ class TicketService(
         for (savedSelection in savedSelections) {
             val externalId = savedSelection.externalSelectionId ?: continue
             val components = parsedData.selectionComponents[externalId] ?: continue
-            
+
             if (components.isNotEmpty()) {
                 val componentEntities = components.map { componentData ->
                     BetSelectionComponentEntity(
@@ -155,9 +155,19 @@ class TicketService(
                 logger.debug("Saved {} components for selection {}", components.size, savedSelection.id)
             }
         }
-        
+
+        // Se o bilhete foi importado já liquidado, publica evento para processamento de analytics
+        if (isSettledStatus(savedTicket.ticketStatus)) {
+            val event = buildSettledEvent(savedTicket)
+            eventPublisher.publishEvent(event)
+            logger.info(
+                "Published TicketSettledEvent for imported settled ticket {} (status: {}, profit: {})",
+                savedTicket.id, savedTicket.financialStatus, savedTicket.profitLoss
+            )
+        }
+
         logger.info("Ticket imported successfully: {}", savedTicket.id)
-        
+
         return TicketResponse.fromDomain(savedTicket.toDomain(), provider.name)
     }
     
@@ -609,5 +619,71 @@ class TicketService(
                 ticket.id, ticket.financialStatus, ticket.profitLoss
             )
         }
+    }
+
+    /**
+     * Conta bilhetes liquidados de um usuário que podem ter analytics processados.
+     * Usado para retornar a quantidade antes de iniciar o processamento assíncrono.
+     */
+    fun countSettledTicketsForAnalytics(userId: Long): Int {
+        return ticketRepository.findSettledTicketsByUserId(userId).size
+    }
+
+    /**
+     * Processa analytics de bilhetes liquidados de um usuário.
+     * Busca todos os bilhetes liquidados e publica eventos de analytics para cada um.
+     * Executa de forma assíncrona quando chamado via @Async.
+     *
+     * @param userId ID do usuário
+     * @return Resultado do processamento
+     */
+    @Transactional
+    fun processSettledTicketsAnalytics(userId: Long): AnalyticsProcessingResult {
+        logger.info("Starting analytics processing for settled tickets of user: {}", userId)
+
+        val settledTickets = ticketRepository.findSettledTicketsByUserId(userId)
+
+        if (settledTickets.isEmpty()) {
+            logger.info("No settled tickets to process analytics for user: {}", userId)
+            return AnalyticsProcessingResult(
+                totalProcessed = 0,
+                successful = 0,
+                errors = 0
+            )
+        }
+
+        logger.info("Found {} settled tickets to process analytics for user: {}", settledTickets.size, userId)
+
+        var successful = 0
+        val errorDetails = mutableListOf<AnalyticsProcessingError>()
+
+        for (ticket in settledTickets) {
+            try {
+                // Publica evento de liquidação para processamento de analytics
+                val event = buildSettledEvent(ticket)
+                eventPublisher.publishEvent(event)
+                successful++
+
+                logger.debug("Published analytics event for ticket: {}", ticket.id)
+            } catch (e: Exception) {
+                logger.error("Error publishing analytics event for ticket {}: {}", ticket.id, e.message)
+                errorDetails.add(AnalyticsProcessingError(
+                    ticketId = ticket.id.requireId("Ticket"),
+                    externalTicketId = ticket.externalTicketId,
+                    errorMessage = e.message ?: "Unknown error"
+                ))
+            }
+        }
+
+        val result = AnalyticsProcessingResult(
+            totalProcessed = settledTickets.size,
+            successful = successful,
+            errors = errorDetails.size,
+            errorDetails = errorDetails
+        )
+
+        logger.info("Analytics processing completed for user {}: {}", userId, result)
+
+        return result
     }
 }

@@ -280,3 +280,45 @@ enum class RefreshStatus {
     PARTIAL_ERROR,
     FAILED
 }
+
+// ============================================
+// Analytics Processing DTOs
+// ============================================
+
+/**
+ * Resposta para a requisição de processamento de analytics de bilhetes liquidados.
+ */
+data class ProcessAnalyticsResponse(
+    val message: String,
+    val ticketsToProcess: Int,
+    val status: AnalyticsProcessingStatus = AnalyticsProcessingStatus.PROCESSING
+)
+
+/**
+ * Resultado do processamento de analytics.
+ */
+data class AnalyticsProcessingResult(
+    val totalProcessed: Int,
+    val successful: Int,
+    val errors: Int,
+    val errorDetails: List<AnalyticsProcessingError> = emptyList()
+)
+
+/**
+ * Erro no processamento de analytics de um bilhete.
+ */
+data class AnalyticsProcessingError(
+    val ticketId: Long,
+    val externalTicketId: String?,
+    val errorMessage: String
+)
+
+/**
+ * Status do processamento de analytics.
+ */
+enum class AnalyticsProcessingStatus {
+    PROCESSING,
+    COMPLETED,
+    PARTIAL_ERROR,
+    FAILED
+}
