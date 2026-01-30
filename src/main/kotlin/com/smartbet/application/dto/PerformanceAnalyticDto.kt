@@ -8,14 +8,30 @@ import java.math.BigDecimal
 
 data class OverallPerformanceResponse(
     val totalBets: Long,
-    /** Total de vitórias (tickets ganhos) */
+
+    // Contadores agregados (compatibilidade retroativa)
+    /** Total de vitórias (full_won + partial_won) - compatibilidade */
     val wins: Long,
-    /** Total de derrotas (tickets perdidos) */
+    /** Total de derrotas (partial_lost + total_lost) - compatibilidade */
     val losses: Long,
-    /** Tickets anulados/void */
+    /** Tickets anulados/void (break_even) - compatibilidade */
     val voids: Long,
     /** Tickets com cashout */
     val cashedOut: Long,
+
+    // Contadores granulares por FinancialStatus
+    /** Vitórias completas (FULL_WIN): retorno >= potencial máximo */
+    val fullWins: Long,
+    /** Vitórias parciais (PARTIAL_WIN): sistema parcial ou cashout com lucro */
+    val partialWins: Long,
+    /** Empates (BREAK_EVEN): retorno = stake (anulação, cashout exato, ou sistema) */
+    val breakEven: Long,
+    /** Perdas parciais (PARTIAL_LOSS): comum em sistemas, ou cashout com prejuízo */
+    val partialLosses: Long,
+    /** Perdas totais (TOTAL_LOSS): retorno = 0 */
+    val totalLosses: Long,
+
+    // Métricas
     val winRate: BigDecimal,
     val totalStaked: BigDecimal,
     val totalReturns: BigDecimal,
@@ -24,6 +40,16 @@ data class OverallPerformanceResponse(
     /** Média das odds dos tickets */
     val avgOdd: BigDecimal?,
     val avgStake: BigDecimal?,
+
+    // Métricas granulares derivadas
+    /** Taxa de acerto completo (full_wins / total_bets * 100) */
+    val fullWinRate: BigDecimal,
+    /** Taxa de acerto parcial (partial_wins / total_bets * 100) */
+    val partialWinRate: BigDecimal,
+    /** Taxa de empate (break_even / total_bets * 100) */
+    val breakEvenRate: BigDecimal,
+    /** Taxa de sucesso do cashout (partial_wins / (partial_wins + partial_losses) * 100), null se nenhum cashout */
+    val cashoutSuccessRate: BigDecimal?,
 
     // Gamificação: Streaks
     /** Sequência atual: >0 = vitórias seguidas, <0 = derrotas seguidas, 0 = sem sequência */
@@ -50,17 +76,32 @@ data class PerformanceByMonthResponse(
     val year: Int,
     val month: Int,
     val totalBets: Long,
-    /** Total de vitórias (tickets ganhos) */
+
+    // Contadores agregados (compatibilidade)
+    /** Total de vitórias (full_won + partial_won) */
     val wins: Long,
-    /** Total de derrotas (tickets perdidos) */
+    /** Total de derrotas (partial_lost + total_lost) */
     val losses: Long,
-    /** Tickets anulados/void */
+    /** Tickets anulados/void (break_even) */
     val voids: Long,
+
+    // Contadores granulares
+    val fullWins: Long,
+    val partialWins: Long,
+    val breakEven: Long,
+    val partialLosses: Long,
+    val totalLosses: Long,
+
+    // Métricas
     val winRate: BigDecimal,
     val totalStaked: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
     val avgStake: BigDecimal?,
+
+    // Métricas granulares
+    val fullWinRate: BigDecimal,
+    val partialWinRate: BigDecimal,
 
     // Timestamps
     val firstBetAt: Long?,
@@ -73,18 +114,33 @@ data class PerformanceByTournamentResponse(
     /** Nome local/país do torneio */
     val tournamentLocalName: String? = null,
     val totalBets: Long,
-    /** Total de vitórias (tickets ganhos) */
+
+    // Contadores agregados (compatibilidade)
+    /** Total de vitórias (full_won + partial_won) */
     val wins: Long,
-    /** Total de derrotas (tickets perdidos) */
+    /** Total de derrotas (partial_lost + total_lost) */
     val losses: Long,
-    /** Tickets anulados/void */
+    /** Tickets anulados/void (break_even) */
     val voids: Long,
+
+    // Contadores granulares
+    val fullWins: Long,
+    val partialWins: Long,
+    val breakEven: Long,
+    val partialLosses: Long,
+    val totalLosses: Long,
+
+    // Métricas
     val winRate: BigDecimal,
     val totalStaked: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
     /** Média das odds dos tickets neste torneio */
     val avgOdd: BigDecimal?,
+
+    // Métricas granulares
+    val fullWinRate: BigDecimal,
+    val partialWinRate: BigDecimal,
 
     // Timestamps
     val firstBetAt: Long?,
@@ -97,18 +153,33 @@ data class PerformanceByMarketResponse(
     val totalSelections: Long,
     /** Número de tickets únicos que incluem esse mercado */
     val uniqueTickets: Long,
+
+    // Contadores agregados (baseados em seleções - compatibilidade)
     /** Seleções ganhas neste mercado */
     val wins: Long,
     /** Seleções perdidas neste mercado */
     val losses: Long,
     /** Seleções anuladas neste mercado */
     val voids: Long,
+
+    // Contadores granulares (baseados no FinancialStatus dos tickets)
+    val fullWins: Long,
+    val partialWins: Long,
+    val breakEven: Long,
+    val partialLosses: Long,
+    val totalLosses: Long,
+
+    // Métricas
     val winRate: BigDecimal,
     val totalStaked: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
     /** Média das odds das seleções neste mercado */
     val avgOdd: BigDecimal?,
+
+    // Métricas granulares
+    val fullWinRate: BigDecimal,
+    val partialWinRate: BigDecimal,
 
     // Timestamps
     val firstBetAt: Long?,
@@ -143,20 +214,36 @@ data class PerformanceByProviderResponse(
     val providerId: Long,
     val providerName: String,
     val totalBets: Long,
-    /** Total de vitórias (tickets ganhos) */
+
+    // Contadores agregados (compatibilidade)
+    /** Total de vitórias (full_won + partial_won) */
     val wins: Long,
-    /** Total de derrotas (tickets perdidos) */
+    /** Total de derrotas (partial_lost + total_lost) */
     val losses: Long,
-    /** Tickets anulados/void */
+    /** Tickets anulados/void (break_even) */
     val voids: Long,
     /** Tickets com cashout */
     val cashedOut: Long,
+
+    // Contadores granulares
+    val fullWins: Long,
+    val partialWins: Long,
+    val breakEven: Long,
+    val partialLosses: Long,
+    val totalLosses: Long,
+
+    // Métricas
     val winRate: BigDecimal,
     val totalStaked: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
     /** Média das odds dos tickets */
     val avgOdd: BigDecimal?,
+
+    // Métricas granulares
+    val fullWinRate: BigDecimal,
+    val partialWinRate: BigDecimal,
+    val cashoutSuccessRate: BigDecimal?,
 
     // Timestamps
     val firstBetAt: Long?,

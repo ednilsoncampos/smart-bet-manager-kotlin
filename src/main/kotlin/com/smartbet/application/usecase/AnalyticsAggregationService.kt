@@ -2,6 +2,7 @@ package com.smartbet.application.usecase
 
 import com.smartbet.domain.enum.FinancialStatus
 import com.smartbet.domain.event.TicketSettledEvent
+import com.smartbet.domain.service.FinancialStatusRules
 import com.smartbet.infrastructure.persistence.entity.*
 import com.smartbet.infrastructure.persistence.repository.*
 import org.slf4j.LoggerFactory
@@ -36,11 +37,8 @@ class AnalyticsAggregationService(
      * Atualiza todas as tabelas de analytics baseado em um ticket liquidado.
      *
      * @param event Evento de liquidação do ticket
-     *
-     * TODO: Reescrever para usar os campos corretos das entidades (ticketsWon, ticketsLost, uniqueTickets, totalSelections, etc.)
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    @Deprecated("Precisa ser reescrito para bater com o schema do banco")
     fun updateOnSettlement(event: TicketSettledEvent) {
         logger.info(
             "Processing analytics update for ticket {} (user: {}, status: {}, profit: {})",
@@ -182,26 +180,32 @@ class AnalyticsAggregationService(
     // ========== Criação de Novos Registros ==========
 
     private fun createNewOverall(event: TicketSettledEvent): PerformanceOverallEntity {
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
         val totalReturn = event.actualPayout
 
         return PerformanceOverallEntity(
             userId = event.userId,
             totalTickets = 1,
-            ticketsWon = wins,
-            ticketsLost = losses,
-            ticketsVoid = voids,
+            ticketsWon = counts.aggregatedWins,
+            ticketsLost = counts.aggregatedLosses,
+            ticketsVoid = counts.aggregatedVoids,
             ticketsCashedOut = 0,
+            // Novos campos granulares
+            ticketsFullWon = counts.fullWon,
+            ticketsPartialWon = counts.partialWon,
+            ticketsBreakEven = counts.breakEven,
+            ticketsPartialLost = counts.partialLost,
+            ticketsTotalLost = counts.aggregatedLosses,
             totalStake = event.stake,
             totalReturn = totalReturn,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(wins, 1),
+            winRate = calculateWinRate(counts.aggregatedWins, 1),
             avgOdd = null,
             avgStake = event.stake,
-            currentStreak = if (wins > 0) 1 else if (losses > 0) -1 else 0,
-            bestWinStreak = if (wins > 0) 1 else 0,
-            worstLossStreak = if (losses > 0) -1 else 0,
+            currentStreak = if (counts.aggregatedWins > 0) 1 else if (counts.aggregatedLosses > 0) -1 else 0,
+            bestWinStreak = if (counts.aggregatedWins > 0) 1 else 0,
+            worstLossStreak = if (counts.aggregatedLosses > 0) -1 else 0,
             biggestWin = if (event.profitLoss > BigDecimal.ZERO) event.profitLoss else null,
             biggestLoss = if (event.profitLoss < BigDecimal.ZERO) event.profitLoss else null,
             bestRoiTicket = event.roi,
@@ -213,18 +217,24 @@ class AnalyticsAggregationService(
     }
 
     private fun createNewByMonth(id: PerformanceByMonthId, event: TicketSettledEvent): PerformanceByMonthEntity {
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
 
         return PerformanceByMonthEntity(
             id = id,
             totalTickets = 1,
-            ticketsWon = wins,
-            ticketsLost = losses,
-            ticketsVoid = voids,
+            ticketsWon = counts.aggregatedWins,
+            ticketsLost = counts.aggregatedLosses,
+            ticketsVoid = counts.aggregatedVoids,
+            // Novos campos granulares
+            ticketsFullWon = counts.fullWon,
+            ticketsPartialWon = counts.partialWon,
+            ticketsBreakEven = counts.breakEven,
+            ticketsPartialLost = counts.partialLost,
+            ticketsTotalLost = counts.aggregatedLosses,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(wins, 1),
+            winRate = calculateWinRate(counts.aggregatedWins, 1),
             avgStake = event.stake,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
@@ -234,19 +244,25 @@ class AnalyticsAggregationService(
     }
 
     private fun createNewByProvider(id: PerformanceByProviderId, event: TicketSettledEvent): PerformanceByProviderEntity {
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
 
         return PerformanceByProviderEntity(
             id = id,
             totalTickets = 1,
-            ticketsWon = wins,
-            ticketsLost = losses,
-            ticketsVoid = voids,
+            ticketsWon = counts.aggregatedWins,
+            ticketsLost = counts.aggregatedLosses,
+            ticketsVoid = counts.aggregatedVoids,
             ticketsCashedOut = 0,
+            // Novos campos granulares
+            ticketsFullWon = counts.fullWon,
+            ticketsPartialWon = counts.partialWon,
+            ticketsBreakEven = counts.breakEven,
+            ticketsPartialLost = counts.partialLost,
+            ticketsTotalLost = counts.aggregatedLosses,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(wins, 1),
+            winRate = calculateWinRate(counts.aggregatedWins, 1),
             avgOdd = null,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
@@ -256,20 +272,26 @@ class AnalyticsAggregationService(
     }
 
     private fun createNewByMarket(id: PerformanceByMarketId, event: TicketSettledEvent): PerformanceByMarketEntity {
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
         val selectionsInMarket = event.selections.count { it.marketType == id.marketType }
 
         return PerformanceByMarketEntity(
             id = id,
             totalSelections = selectionsInMarket,
-            wins = wins,
-            losses = losses,
-            voids = voids,
+            wins = counts.aggregatedWins,
+            losses = counts.aggregatedLosses,
+            voids = counts.aggregatedVoids,
             uniqueTickets = 1,
+            // Novos campos granulares
+            ticketsFullWon = counts.fullWon,
+            ticketsPartialWon = counts.partialWon,
+            ticketsBreakEven = counts.breakEven,
+            ticketsPartialLost = counts.partialLost,
+            ticketsTotalLost = counts.aggregatedLosses,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(wins, 1),
+            winRate = calculateWinRate(counts.aggregatedWins, 1),
             avgOdd = null,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
@@ -279,18 +301,24 @@ class AnalyticsAggregationService(
     }
 
     private fun createNewByTournament(id: PerformanceByTournamentId, event: TicketSettledEvent): PerformanceByTournamentEntity {
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
 
         return PerformanceByTournamentEntity(
             id = id,
             totalTickets = 1,
-            ticketsWon = wins,
-            ticketsLost = losses,
-            ticketsVoid = voids,
+            ticketsWon = counts.aggregatedWins,
+            ticketsLost = counts.aggregatedLosses,
+            ticketsVoid = counts.aggregatedVoids,
+            // Novos campos granulares
+            ticketsFullWon = counts.fullWon,
+            ticketsPartialWon = counts.partialWon,
+            ticketsBreakEven = counts.breakEven,
+            ticketsPartialLost = counts.partialLost,
+            ticketsTotalLost = counts.aggregatedLosses,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(wins, 1),
+            winRate = calculateWinRate(counts.aggregatedWins, 1),
             avgOdd = null,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
@@ -302,13 +330,20 @@ class AnalyticsAggregationService(
     // ========== Atualização de Registros Existentes ==========
 
     private fun updateExistingOverall(entity: PerformanceOverallEntity, event: TicketSettledEvent) {
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
 
-        // Atualiza contadores
+        // Atualiza contadores agregados (compatibilidade)
         entity.totalTickets++
-        entity.ticketsWon += wins
-        entity.ticketsLost += losses
-        entity.ticketsVoid += voids
+        entity.ticketsWon += counts.aggregatedWins
+        entity.ticketsLost += counts.aggregatedLosses
+        entity.ticketsVoid += counts.aggregatedVoids
+
+        // Atualiza contadores granulares
+        entity.ticketsFullWon += counts.fullWon
+        entity.ticketsPartialWon += counts.partialWon
+        entity.ticketsBreakEven += counts.breakEven
+        entity.ticketsPartialLost += counts.partialLost
+        entity.ticketsTotalLost += counts.aggregatedLosses
 
         // Atualiza valores financeiros
         entity.totalStake += event.stake
@@ -331,12 +366,21 @@ class AnalyticsAggregationService(
     }
 
     private fun updateExistingByMonth(entity: PerformanceByMonthEntity, event: TicketSettledEvent) {
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
 
+        // Atualiza contadores agregados (compatibilidade)
         entity.totalTickets++
-        entity.ticketsWon += wins
-        entity.ticketsLost += losses
-        entity.ticketsVoid += voids
+        entity.ticketsWon += counts.aggregatedWins
+        entity.ticketsLost += counts.aggregatedLosses
+        entity.ticketsVoid += counts.aggregatedVoids
+
+        // Atualiza contadores granulares
+        entity.ticketsFullWon += counts.fullWon
+        entity.ticketsPartialWon += counts.partialWon
+        entity.ticketsBreakEven += counts.breakEven
+        entity.ticketsPartialLost += counts.partialLost
+        entity.ticketsTotalLost += counts.aggregatedLosses
+
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
@@ -346,12 +390,21 @@ class AnalyticsAggregationService(
     }
 
     private fun updateExistingByProvider(entity: PerformanceByProviderEntity, event: TicketSettledEvent) {
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
 
+        // Atualiza contadores agregados (compatibilidade)
         entity.totalTickets++
-        entity.ticketsWon += wins
-        entity.ticketsLost += losses
-        entity.ticketsVoid += voids
+        entity.ticketsWon += counts.aggregatedWins
+        entity.ticketsLost += counts.aggregatedLosses
+        entity.ticketsVoid += counts.aggregatedVoids
+
+        // Atualiza contadores granulares
+        entity.ticketsFullWon += counts.fullWon
+        entity.ticketsPartialWon += counts.partialWon
+        entity.ticketsBreakEven += counts.breakEven
+        entity.ticketsPartialLost += counts.partialLost
+        entity.ticketsTotalLost += counts.aggregatedLosses
+
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
@@ -361,15 +414,24 @@ class AnalyticsAggregationService(
     }
 
     private fun updateExistingByMarket(entity: PerformanceByMarketEntity, event: TicketSettledEvent) {
-        // TODO: Reescrever lógica para usar totalSelections e uniqueTickets
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
         val selectionsInMarket = event.selections.count { it.marketType == entity.id.marketType }
 
         entity.totalSelections += selectionsInMarket
         entity.uniqueTickets++
-        entity.wins += wins
-        entity.losses += losses
-        entity.voids += voids
+
+        // Atualiza contadores agregados (compatibilidade)
+        entity.wins += counts.aggregatedWins
+        entity.losses += counts.aggregatedLosses
+        entity.voids += counts.aggregatedVoids
+
+        // Atualiza contadores granulares
+        entity.ticketsFullWon += counts.fullWon
+        entity.ticketsPartialWon += counts.partialWon
+        entity.ticketsBreakEven += counts.breakEven
+        entity.ticketsPartialLost += counts.partialLost
+        entity.ticketsTotalLost += counts.aggregatedLosses
+
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
@@ -379,12 +441,21 @@ class AnalyticsAggregationService(
     }
 
     private fun updateExistingByTournament(entity: PerformanceByTournamentEntity, event: TicketSettledEvent) {
-        val (wins, losses, voids) = countTicketsByStatus(event)
+        val counts = countTicketsByStatus(event)
 
+        // Atualiza contadores agregados (compatibilidade)
         entity.totalTickets++
-        entity.ticketsWon += wins
-        entity.ticketsLost += losses
-        entity.ticketsVoid += voids
+        entity.ticketsWon += counts.aggregatedWins
+        entity.ticketsLost += counts.aggregatedLosses
+        entity.ticketsVoid += counts.aggregatedVoids
+
+        // Atualiza contadores granulares
+        entity.ticketsFullWon += counts.fullWon
+        entity.ticketsPartialWon += counts.partialWon
+        entity.ticketsBreakEven += counts.breakEven
+        entity.ticketsPartialLost += counts.partialLost
+        entity.ticketsTotalLost += counts.aggregatedLosses
+
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
@@ -456,16 +527,34 @@ class AnalyticsAggregationService(
     // ========== Funções Auxiliares ==========
 
     /**
-     * Conta tickets por status financeiro.
-     *
-     * @return Triple(wins, losses, voids)
+     * Estrutura para contagem granular de tickets por FinancialStatus
      */
-    private fun countTicketsByStatus(event: TicketSettledEvent): Triple<Int, Int, Int> {
+    private data class TicketCounts(
+        val fullWon: Int = 0,
+        val partialWon: Int = 0,
+        val breakEven: Int = 0,
+        val partialLost: Int = 0,
+        val totalLosses: Int = 0
+    ) {
+        // Compatibilidade: agregados para campos existentes
+        val aggregatedWins: Int get() = fullWon + partialWon
+        val aggregatedLosses: Int get() = partialLost + totalLosses
+        val aggregatedVoids: Int get() = breakEven
+    }
+
+    /**
+     * Conta tickets por status financeiro de forma granular.
+     *
+     * @return TicketCounts com contagem detalhada por FinancialStatus
+     */
+    private fun countTicketsByStatus(event: TicketSettledEvent): TicketCounts {
         return when (event.financialStatus) {
-            FinancialStatus.FULL_WIN, FinancialStatus.PARTIAL_WIN -> Triple(1, 0, 0)
-            FinancialStatus.TOTAL_LOSS, FinancialStatus.PARTIAL_LOSS -> Triple(0, 1, 0)
-            FinancialStatus.BREAK_EVEN -> Triple(0, 0, 1)
-            FinancialStatus.PENDING -> Triple(0, 0, 0) // Não deveria acontecer
+            FinancialStatus.FULL_WIN -> TicketCounts(fullWon = 1)
+            FinancialStatus.PARTIAL_WIN -> TicketCounts(partialWon = 1)
+            FinancialStatus.BREAK_EVEN -> TicketCounts(breakEven = 1)
+            FinancialStatus.PARTIAL_LOSS -> TicketCounts(partialLost = 1)
+            FinancialStatus.TOTAL_LOSS -> TicketCounts(totalLosses = 1)
+            FinancialStatus.PENDING -> TicketCounts() // Não deveria acontecer
         }
     }
 

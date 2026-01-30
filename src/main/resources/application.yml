@@ -11,7 +11,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:smartbet}?sslmode=${DB_SSLMODE:disable}
     username: ${DB_USER:smartbet}
-    password: ${DB_PASSWORD:smartbet}
+    password: ${DB_PASSWORD:smartbet123}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
@@ -57,6 +57,16 @@ app:
     ticket-refresh:
       rate: ${TICKET_REFRESH_RATE:1800000}       # 30 minutos em ms
       initial-delay: ${TICKET_REFRESH_DELAY:300000}  # 5 minutos em ms
+
+# SpringDoc OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  show-actuator: false
 
 # Actuator & Observability (compartilhado)
 management:

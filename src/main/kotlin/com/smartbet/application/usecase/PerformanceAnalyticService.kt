@@ -39,10 +39,18 @@ class PerformanceAnalyticService(
 
         return OverallPerformanceResponse(
             totalBets = performance.totalTickets.toLong(),
+            // Contadores agregados (compatibilidade)
             wins = performance.ticketsWon.toLong(),
             losses = performance.ticketsLost.toLong(),
             voids = performance.ticketsVoid.toLong(),
             cashedOut = performance.ticketsCashedOut.toLong(),
+            // Contadores granulares
+            fullWins = performance.ticketsFullWon.toLong(),
+            partialWins = performance.ticketsPartialWon.toLong(),
+            breakEven = performance.ticketsBreakEven.toLong(),
+            partialLosses = performance.ticketsPartialLost.toLong(),
+            totalLosses = performance.ticketsTotalLost.toLong(),
+            // Métricas
             winRate = performance.winRate,
             totalStaked = performance.totalStake,
             totalReturns = performance.totalReturn,
@@ -50,6 +58,15 @@ class PerformanceAnalyticService(
             roi = performance.roi,
             avgOdd = performance.avgOdd,
             avgStake = performance.avgStake,
+            // Métricas granulares
+            fullWinRate = calculateRate(performance.ticketsFullWon, performance.totalTickets),
+            partialWinRate = calculateRate(performance.ticketsPartialWon, performance.totalTickets),
+            breakEvenRate = calculateRate(performance.ticketsBreakEven, performance.totalTickets),
+            cashoutSuccessRate = calculateCashoutSuccessRate(
+                performance.ticketsPartialWon,
+                performance.ticketsPartialLost
+            ),
+            // Gamificação
             currentStreak = performance.currentStreak,
             bestWinStreak = performance.bestWinStreak,
             worstLossStreak = performance.worstLossStreak,
@@ -67,6 +84,11 @@ class PerformanceAnalyticService(
         losses = 0,
         voids = 0,
         cashedOut = 0,
+        fullWins = 0,
+        partialWins = 0,
+        breakEven = 0,
+        partialLosses = 0,
+        totalLosses = 0,
         winRate = BigDecimal.ZERO,
         totalStaked = BigDecimal.ZERO,
         totalReturns = BigDecimal.ZERO,
@@ -74,6 +96,10 @@ class PerformanceAnalyticService(
         roi = BigDecimal.ZERO,
         avgOdd = null,
         avgStake = null,
+        fullWinRate = BigDecimal.ZERO,
+        partialWinRate = BigDecimal.ZERO,
+        breakEvenRate = BigDecimal.ZERO,
+        cashoutSuccessRate = null,
         currentStreak = 0,
         bestWinStreak = 0,
         worstLossStreak = 0,
@@ -102,11 +128,18 @@ class PerformanceAnalyticService(
                 wins = performance.ticketsWon.toLong(),
                 losses = performance.ticketsLost.toLong(),
                 voids = performance.ticketsVoid.toLong(),
+                fullWins = performance.ticketsFullWon.toLong(),
+                partialWins = performance.ticketsPartialWon.toLong(),
+                breakEven = performance.ticketsBreakEven.toLong(),
+                partialLosses = performance.ticketsPartialLost.toLong(),
+                totalLosses = performance.ticketsTotalLost.toLong(),
                 winRate = performance.winRate,
                 totalStaked = performance.totalStake,
                 profitLoss = performance.totalProfit,
                 roi = performance.roi,
                 avgOdd = performance.avgOdd,
+                fullWinRate = calculateRate(performance.ticketsFullWon, performance.totalTickets),
+                partialWinRate = calculateRate(performance.ticketsPartialWon, performance.totalTickets),
                 firstBetAt = performance.firstBetAt,
                 lastSettledAt = performance.lastSettledAt
             )
@@ -128,11 +161,18 @@ class PerformanceAnalyticService(
                 wins = performance.ticketsWon.toLong(),
                 losses = performance.ticketsLost.toLong(),
                 voids = performance.ticketsVoid.toLong(),
+                fullWins = performance.ticketsFullWon.toLong(),
+                partialWins = performance.ticketsPartialWon.toLong(),
+                breakEven = performance.ticketsBreakEven.toLong(),
+                partialLosses = performance.ticketsPartialLost.toLong(),
+                totalLosses = performance.ticketsTotalLost.toLong(),
                 winRate = performance.winRate,
                 totalStaked = performance.totalStake,
                 profitLoss = performance.totalProfit,
                 roi = performance.roi,
                 avgStake = performance.avgStake,
+                fullWinRate = calculateRate(performance.ticketsFullWon, performance.totalTickets),
+                partialWinRate = calculateRate(performance.ticketsPartialWon, performance.totalTickets),
                 firstBetAt = performance.firstBetAt,
                 lastSettledAt = performance.lastSettledAt
             )
@@ -160,11 +200,18 @@ class PerformanceAnalyticService(
                 wins = performance.wins.toLong(),
                 losses = performance.losses.toLong(),
                 voids = performance.voids.toLong(),
+                fullWins = performance.ticketsFullWon.toLong(),
+                partialWins = performance.ticketsPartialWon.toLong(),
+                breakEven = performance.ticketsBreakEven.toLong(),
+                partialLosses = performance.ticketsPartialLost.toLong(),
+                totalLosses = performance.ticketsTotalLost.toLong(),
                 winRate = performance.winRate,
                 totalStaked = performance.totalStake,
                 profitLoss = performance.totalProfit,
                 roi = performance.roi,
                 avgOdd = performance.avgOdd,
+                fullWinRate = calculateRate(performance.ticketsFullWon, performance.uniqueTickets),
+                partialWinRate = calculateRate(performance.ticketsPartialWon, performance.uniqueTickets),
                 firstBetAt = performance.firstBetAt,
                 lastSettledAt = performance.lastSettledAt,
                 betBuilderComponents = betBuilderStats
@@ -232,14 +279,52 @@ class PerformanceAnalyticService(
                 losses = performance.ticketsLost.toLong(),
                 voids = performance.ticketsVoid.toLong(),
                 cashedOut = performance.ticketsCashedOut.toLong(),
+                fullWins = performance.ticketsFullWon.toLong(),
+                partialWins = performance.ticketsPartialWon.toLong(),
+                breakEven = performance.ticketsBreakEven.toLong(),
+                partialLosses = performance.ticketsPartialLost.toLong(),
+                totalLosses = performance.ticketsTotalLost.toLong(),
                 winRate = performance.winRate,
                 totalStaked = performance.totalStake,
                 profitLoss = performance.totalProfit,
                 roi = performance.roi,
                 avgOdd = performance.avgOdd,
+                fullWinRate = calculateRate(performance.ticketsFullWon, performance.totalTickets),
+                partialWinRate = calculateRate(performance.ticketsPartialWon, performance.totalTickets),
+                cashoutSuccessRate = calculateCashoutSuccessRate(
+                    performance.ticketsPartialWon,
+                    performance.ticketsPartialLost
+                ),
                 firstBetAt = performance.firstBetAt,
                 lastSettledAt = performance.lastSettledAt
             )
         }
+    }
+
+    // ========== Funções Auxiliares ==========
+
+    /**
+     * Calcula taxa percentual: (count / total) * 100
+     */
+    private fun calculateRate(count: Int, total: Int): BigDecimal {
+        if (total == 0) return BigDecimal.ZERO
+        return BigDecimal(count)
+            .divide(BigDecimal(total), 4, RoundingMode.HALF_UP)
+            .multiply(BigDecimal(100))
+            .setScale(2, RoundingMode.HALF_UP)
+    }
+
+    /**
+     * Calcula taxa de sucesso de cashout: (partial_wins / (partial_wins + partial_losses)) * 100
+     * Retorna null se não houver cashouts (partial_wins + partial_losses = 0)
+     */
+    private fun calculateCashoutSuccessRate(partialWins: Int, partialLosses: Int): BigDecimal? {
+        val totalPartial = partialWins + partialLosses
+        if (totalPartial == 0) return null
+
+        return BigDecimal(partialWins)
+            .divide(BigDecimal(totalPartial), 4, RoundingMode.HALF_UP)
+            .multiply(BigDecimal(100))
+            .setScale(2, RoundingMode.HALF_UP)
     }
 }

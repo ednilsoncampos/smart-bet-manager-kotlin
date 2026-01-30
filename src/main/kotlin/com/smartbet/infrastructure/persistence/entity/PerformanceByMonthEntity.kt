@@ -43,6 +43,22 @@ data class PerformanceByMonthEntity(
     @Column(name = "tickets_void", nullable = false)
     var ticketsVoid: Int = 0,
 
+    // Contadores granulares por FinancialStatus
+    @Column(name = "tickets_full_won", nullable = false)
+    var ticketsFullWon: Int = 0,
+
+    @Column(name = "tickets_partial_won", nullable = false)
+    var ticketsPartialWon: Int = 0,
+
+    @Column(name = "tickets_break_even", nullable = false)
+    var ticketsBreakEven: Int = 0,
+
+    @Column(name = "tickets_partial_lost", nullable = false)
+    var ticketsPartialLost: Int = 0,
+
+    @Column(name = "tickets_total_lost", nullable = false)
+    var ticketsTotalLost: Int = 0,
+
     // Métricas financeiras
     @Column(name = "total_stake", nullable = false, precision = 15, scale = 2)
     var totalStake: BigDecimal = BigDecimal.ZERO,

@@ -320,6 +320,13 @@ CREATE TABLE analytics.performance_overall (
     tickets_void INT NOT NULL DEFAULT 0,
     tickets_cashed_out INT NOT NULL DEFAULT 0,
 
+    -- Contadores granulares por FinancialStatus
+    tickets_full_won INT NOT NULL DEFAULT 0,
+    tickets_partial_won INT NOT NULL DEFAULT 0,
+    tickets_break_even INT NOT NULL DEFAULT 0,
+    tickets_partial_lost INT NOT NULL DEFAULT 0,
+    tickets_total_lost INT NOT NULL DEFAULT 0,
+
     -- Métricas financeiras
     total_stake DECIMAL(15,2) NOT NULL DEFAULT 0,
     total_return DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -359,6 +366,13 @@ CREATE INDEX idx_performance_overall_last_settled ON analytics.performance_overa
 COMMENT ON TABLE analytics.performance_overall IS 'Performance geral agregada por usuário (all-time)';
 COMMENT ON COLUMN analytics.performance_overall.current_streak IS 'Sequência atual: >0 = vitórias seguidas, <0 = derrotas seguidas';
 COMMENT ON COLUMN analytics.performance_overall.roi IS 'ROI em porcentagem (total_profit / total_stake * 100)';
+COMMENT ON COLUMN analytics.performance_overall.tickets_full_won IS 'Vitórias completas (FULL_WIN): retorno >= potencial máximo';
+COMMENT ON COLUMN analytics.performance_overall.tickets_partial_won IS 'Vitórias parciais (PARTIAL_WIN): via sistema parcial ou cashout com lucro';
+COMMENT ON COLUMN analytics.performance_overall.tickets_break_even IS 'Empates (BREAK_EVEN): retorno = stake (anulação, cashout exato, ou sistema)';
+COMMENT ON COLUMN analytics.performance_overall.tickets_partial_lost IS 'Perdas parciais (PARTIAL_LOSS): comum em sistemas, ou cashout com prejuízo';
+COMMENT ON COLUMN analytics.performance_overall.tickets_total_lost IS 'Perdas totais (TOTAL_LOSS): retorno = 0';
+COMMENT ON COLUMN analytics.performance_overall.tickets_won IS 'Total de vitórias (full_won + partial_won) - compatibilidade';
+COMMENT ON COLUMN analytics.performance_overall.tickets_lost IS 'Total de derrotas (partial_lost + total_lost) - compatibilidade';
 
 -- -------------------------------------------
 -- 4.2 analytics.performance_by_month
@@ -373,6 +387,13 @@ CREATE TABLE analytics.performance_by_month (
     tickets_won INT NOT NULL DEFAULT 0,
     tickets_lost INT NOT NULL DEFAULT 0,
     tickets_void INT NOT NULL DEFAULT 0,
+
+    -- Contadores granulares por FinancialStatus
+    tickets_full_won INT NOT NULL DEFAULT 0,
+    tickets_partial_won INT NOT NULL DEFAULT 0,
+    tickets_break_even INT NOT NULL DEFAULT 0,
+    tickets_partial_lost INT NOT NULL DEFAULT 0,
+    tickets_total_lost INT NOT NULL DEFAULT 0,
 
     -- Métricas financeiras
     total_stake DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -403,6 +424,11 @@ CREATE INDEX idx_performance_month_roi ON analytics.performance_by_month(user_id
 
 COMMENT ON TABLE analytics.performance_by_month IS 'Performance agregada por usuário e mês (permite consultas por período)';
 COMMENT ON COLUMN analytics.performance_by_month.month IS 'Mês do ano (1-12)';
+COMMENT ON COLUMN analytics.performance_by_month.tickets_full_won IS 'Vitórias completas no mês';
+COMMENT ON COLUMN analytics.performance_by_month.tickets_partial_won IS 'Vitórias parciais no mês (sistema ou cashout)';
+COMMENT ON COLUMN analytics.performance_by_month.tickets_break_even IS 'Empates no mês';
+COMMENT ON COLUMN analytics.performance_by_month.tickets_partial_lost IS 'Perdas parciais no mês';
+COMMENT ON COLUMN analytics.performance_by_month.tickets_total_lost IS 'Perdas totais no mês';
 
 -- -------------------------------------------
 -- 4.3 analytics.performance_by_provider
@@ -417,6 +443,13 @@ CREATE TABLE analytics.performance_by_provider (
     tickets_lost INT NOT NULL DEFAULT 0,
     tickets_void INT NOT NULL DEFAULT 0,
     tickets_cashed_out INT NOT NULL DEFAULT 0,
+
+    -- Contadores granulares por FinancialStatus
+    tickets_full_won INT NOT NULL DEFAULT 0,
+    tickets_partial_won INT NOT NULL DEFAULT 0,
+    tickets_break_even INT NOT NULL DEFAULT 0,
+    tickets_partial_lost INT NOT NULL DEFAULT 0,
+    tickets_total_lost INT NOT NULL DEFAULT 0,
 
     -- Métricas financeiras
     total_stake DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -446,6 +479,11 @@ CREATE INDEX idx_performance_provider_comparison ON analytics.performance_by_pro
 CREATE INDEX idx_performance_provider_profit ON analytics.performance_by_provider(total_profit DESC);
 
 COMMENT ON TABLE analytics.performance_by_provider IS 'Performance agregada por usuário e casa de aposta';
+COMMENT ON COLUMN analytics.performance_by_provider.tickets_full_won IS 'Vitórias completas no provider';
+COMMENT ON COLUMN analytics.performance_by_provider.tickets_partial_won IS 'Vitórias parciais no provider';
+COMMENT ON COLUMN analytics.performance_by_provider.tickets_break_even IS 'Empates no provider';
+COMMENT ON COLUMN analytics.performance_by_provider.tickets_partial_lost IS 'Perdas parciais no provider';
+COMMENT ON COLUMN analytics.performance_by_provider.tickets_total_lost IS 'Perdas totais no provider';
 
 -- -------------------------------------------
 -- 4.4 analytics.performance_by_market
@@ -462,6 +500,13 @@ CREATE TABLE analytics.performance_by_market (
 
     -- Tickets únicos que incluem esse mercado
     unique_tickets INT NOT NULL DEFAULT 0,
+
+    -- Contadores granulares por FinancialStatus dos tickets
+    tickets_full_won INT NOT NULL DEFAULT 0,
+    tickets_partial_won INT NOT NULL DEFAULT 0,
+    tickets_break_even INT NOT NULL DEFAULT 0,
+    tickets_partial_lost INT NOT NULL DEFAULT 0,
+    tickets_total_lost INT NOT NULL DEFAULT 0,
 
     -- Métricas financeiras
     total_stake DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -491,6 +536,11 @@ CREATE INDEX idx_performance_market_type_roi ON analytics.performance_by_market(
 COMMENT ON TABLE analytics.performance_by_market IS 'Performance agregada por usuário e tipo de mercado';
 COMMENT ON COLUMN analytics.performance_by_market.total_selections IS 'Total de seleções (uma aposta múltipla conta N vezes)';
 COMMENT ON COLUMN analytics.performance_by_market.unique_tickets IS 'Número de tickets únicos que incluem esse mercado';
+COMMENT ON COLUMN analytics.performance_by_market.tickets_full_won IS 'Tickets com FULL_WIN que incluem este mercado';
+COMMENT ON COLUMN analytics.performance_by_market.tickets_partial_won IS 'Tickets com PARTIAL_WIN que incluem este mercado';
+COMMENT ON COLUMN analytics.performance_by_market.tickets_break_even IS 'Tickets com BREAK_EVEN que incluem este mercado';
+COMMENT ON COLUMN analytics.performance_by_market.tickets_partial_lost IS 'Tickets com PARTIAL_LOSS que incluem este mercado';
+COMMENT ON COLUMN analytics.performance_by_market.tickets_total_lost IS 'Tickets com TOTAL_LOSS que incluem este mercado';
 
 -- -------------------------------------------
 -- 4.5 analytics.performance_by_tournament
@@ -504,6 +554,13 @@ CREATE TABLE analytics.performance_by_tournament (
     tickets_won INT NOT NULL DEFAULT 0,
     tickets_lost INT NOT NULL DEFAULT 0,
     tickets_void INT NOT NULL DEFAULT 0,
+
+    -- Contadores granulares por FinancialStatus
+    tickets_full_won INT NOT NULL DEFAULT 0,
+    tickets_partial_won INT NOT NULL DEFAULT 0,
+    tickets_break_even INT NOT NULL DEFAULT 0,
+    tickets_partial_lost INT NOT NULL DEFAULT 0,
+    tickets_total_lost INT NOT NULL DEFAULT 0,
 
     -- Métricas financeiras
     total_stake DECIMAL(15,2) NOT NULL DEFAULT 0,
@@ -533,6 +590,11 @@ CREATE INDEX idx_performance_tournament_user_profit ON analytics.performance_by_
 CREATE INDEX idx_performance_tournament_comparison ON analytics.performance_by_tournament(tournament_id, roi DESC);
 
 COMMENT ON TABLE analytics.performance_by_tournament IS 'Performance agregada por usuário e torneio/campeonato';
+COMMENT ON COLUMN analytics.performance_by_tournament.tickets_full_won IS 'Vitórias completas no torneio';
+COMMENT ON COLUMN analytics.performance_by_tournament.tickets_partial_won IS 'Vitórias parciais no torneio';
+COMMENT ON COLUMN analytics.performance_by_tournament.tickets_break_even IS 'Empates no torneio';
+COMMENT ON COLUMN analytics.performance_by_tournament.tickets_partial_lost IS 'Perdas parciais no torneio';
+COMMENT ON COLUMN analytics.performance_by_tournament.tickets_total_lost IS 'Perdas totais no torneio';
 
 -- ============================================
 -- SECTION 5: PUBLIC SCHEMA - Logs
