@@ -7,6 +7,7 @@ import com.smartbet.domain.entity.BetSelectionComponent
 import com.smartbet.domain.entity.BetTicket
 import com.smartbet.domain.enum.FinancialStatus
 import com.smartbet.domain.enum.TicketStatus
+import com.smartbet.domain.event.TicketSettledEvent
 import com.smartbet.domain.exception.DuplicateTicketException
 import com.smartbet.domain.service.BetStatusCalculator
 import com.smartbet.infrastructure.persistence.entity.BetSelectionComponentEntity
@@ -21,6 +22,7 @@ import com.smartbet.infrastructure.persistence.repository.TournamentRepository
 import com.smartbet.infrastructure.provider.gateway.HttpGateway
 import com.smartbet.infrastructure.provider.strategy.BettingProviderFactory
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.stereotype.Service
@@ -34,7 +36,8 @@ class TicketService(
     private val providerRepository: BettingProviderRepository,
     private val tournamentRepository: TournamentRepository,
     private val providerFactory: BettingProviderFactory,
-    private val httpGateway: HttpGateway
+    private val httpGateway: HttpGateway,
+    private val eventPublisher: ApplicationEventPublisher
 ) {
     private val logger = LoggerFactory.getLogger(TicketService::class.java)
     
@@ -287,6 +290,9 @@ class TicketService(
             throw IllegalAccessException("Acesso negado ao bilhete: ${request.ticketId}")
         }
 
+        // Guarda o status anterior para detectar mudanças
+        val oldStatus = ticket.ticketStatus
+
         // Atualiza os campos
         request.actualPayout?.let { ticket.actualPayout = it }
         request.ticketStatus?.let {
@@ -309,6 +315,10 @@ class TicketService(
         ticket.roi = statusResult.roi
 
         val savedTicket = ticketRepository.save(ticket)
+
+        // Publica evento de liquidação se o ticket foi liquidado
+        publishSettledEventIfNeeded(oldStatus, savedTicket)
+
         val provider = providerRepository.findById(ticket.providerId).orElse(null)
 
         logger.info("Ticket status updated: {} -> {}", request.ticketId, statusResult.financialStatus)
@@ -491,10 +501,13 @@ class TicketService(
             logger.debug("Ticket {} status unchanged: {}", ticket.id, ticket.ticketStatus)
             return false
         }
-        
-        logger.info("Ticket {} status changed: {} -> {}", 
+
+        // Guarda o status anterior para detectar mudanças
+        val oldStatus = ticket.ticketStatus
+
+        logger.info("Ticket {} status changed: {} -> {}",
             ticket.id, ticket.ticketStatus, parsedData.ticketStatus)
-        
+
         // Atualiza os campos do bilhete
         ticket.ticketStatus = parsedData.ticketStatus
         ticket.actualPayout = parsedData.actualPayout
@@ -525,9 +538,72 @@ class TicketService(
                 }
             }
         }
-        
-        ticketRepository.save(ticket)
-        
+
+        val savedTicket = ticketRepository.save(ticket)
+
+        // Publica evento de liquidação se o ticket foi liquidado
+        publishSettledEventIfNeeded(oldStatus, savedTicket)
+
         return true
+    }
+
+    /**
+     * Verifica se um status de ticket representa um ticket liquidado.
+     *
+     * @param status Status do ticket
+     * @return true se o ticket está liquidado
+     */
+    private fun isSettledStatus(status: TicketStatus): Boolean {
+        return status in setOf(TicketStatus.WIN, TicketStatus.LOST, TicketStatus.VOID, TicketStatus.CASHOUT)
+    }
+
+    /**
+     * Constrói um TicketSettledEvent a partir de um ticket liquidado.
+     *
+     * @param ticket Entidade do ticket
+     * @return Evento de liquidação
+     */
+    private fun buildSettledEvent(ticket: BetTicketEntity): TicketSettledEvent {
+        val selections = ticket.selections.map { selection ->
+            TicketSettledEvent.SelectionData(
+                marketType = selection.marketType,
+                tournamentId = selection.tournament?.id,
+                eventDate = selection.eventDate
+            )
+        }
+
+        return TicketSettledEvent(
+            ticketId = ticket.id.requireId("Ticket"),
+            userId = ticket.userId,
+            providerId = ticket.providerId,
+            stake = ticket.stake,
+            actualPayout = ticket.actualPayout,
+            profitLoss = ticket.profitLoss,
+            roi = ticket.roi,
+            ticketStatus = ticket.ticketStatus,
+            financialStatus = ticket.financialStatus,
+            settledAt = ticket.settledAt ?: System.currentTimeMillis(),
+            selections = selections
+        )
+    }
+
+    /**
+     * Publica evento de liquidação de ticket se o status mudou para liquidado.
+     *
+     * @param oldStatus Status anterior do ticket
+     * @param ticket Ticket atualizado
+     */
+    private fun publishSettledEventIfNeeded(oldStatus: TicketStatus?, ticket: BetTicketEntity) {
+        val wasOpen = oldStatus == null || oldStatus == TicketStatus.OPEN
+        val isNowSettled = isSettledStatus(ticket.ticketStatus)
+
+        if (wasOpen && isNowSettled) {
+            val event = buildSettledEvent(ticket)
+            eventPublisher.publishEvent(event)
+            logger.info(
+                "Published TicketSettledEvent for ticket {} (status: {}, profit: {})",
+                ticket.id, ticket.financialStatus, ticket.profitLoss
+            )
+        }
     }
 }
