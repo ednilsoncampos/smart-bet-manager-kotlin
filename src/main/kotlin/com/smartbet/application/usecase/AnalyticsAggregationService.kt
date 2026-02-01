@@ -269,6 +269,7 @@ class AnalyticsAggregationService(
             winRate = calculateWinRate(counts.fullWon, 1),
             successRate = calculateWinRate(counts.aggregatedWins, 1),
             avgOdd = event.totalOdd,
+            avgStake = event.stake,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
             createdAt = System.currentTimeMillis(),
@@ -280,6 +281,19 @@ class AnalyticsAggregationService(
         val ticketCounts = countTicketsByStatus(event)
         val selectionCounts = countSelectionsByStatus(event, id.marketType)
         val selectionsInMarket = event.selections.count { it.marketType == id.marketType }
+
+        // Calcula divisão proporcional baseada no número de seleções
+        val totalSelections = event.selections.size
+        val proportion = if (totalSelections > 0) {
+            BigDecimal(selectionsInMarket).divide(BigDecimal(totalSelections), 4, RoundingMode.HALF_UP)
+        } else {
+            BigDecimal.ONE
+        }
+
+        // Aplica proporção aos valores financeiros
+        val proportionalStake = event.stake.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
+        val proportionalProfit = event.profitLoss.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
+        val proportionalRoi = calculateRoi(proportionalProfit, proportionalStake)
 
         return PerformanceByMarketEntity(
             id = id,
@@ -294,9 +308,10 @@ class AnalyticsAggregationService(
             ticketsBreakEven = ticketCounts.breakEven,
             ticketsPartialLost = ticketCounts.partialLost,
             ticketsTotalLost = ticketCounts.totalLosses,
-            totalStake = event.stake,
-            totalProfit = event.profitLoss,
-            roi = event.roi,
+            // Valores proporcionais baseados no número de seleções
+            totalStake = proportionalStake,
+            totalProfit = proportionalProfit,
+            roi = proportionalRoi,
             // Taxas corrigidas: winRate baseado em SELEÇÕES, successRate baseado em TICKETS
             winRate = calculateWinRate(selectionCounts.wins, selectionsInMarket),
             successRate = calculateWinRate(ticketCounts.fullWon + ticketCounts.partialWon, 1),
@@ -424,6 +439,7 @@ class AnalyticsAggregationService(
         entity.winRate = calculateWinRate(entity.ticketsFullWon, entity.totalTickets)
         entity.successRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
         entity.avgOdd = calculateIncrementalAvg(entity.avgOdd, entity.totalTickets - 1, event.totalOdd, entity.totalTickets)
+        entity.avgStake = calculateIncrementalAvg(entity.avgStake, entity.totalTickets - 1, event.stake, entity.totalTickets)
         entity.lastSettledAt = event.settledAt
         entity.updatedAt = System.currentTimeMillis()
     }
@@ -432,6 +448,18 @@ class AnalyticsAggregationService(
         val ticketCounts = countTicketsByStatus(event)
         val selectionCounts = countSelectionsByStatus(event, entity.id.marketType)
         val selectionsInMarket = event.selections.count { it.marketType == entity.id.marketType }
+
+        // Calcula divisão proporcional baseada no número de seleções
+        val totalSelections = event.selections.size
+        val proportion = if (totalSelections > 0) {
+            BigDecimal(selectionsInMarket).divide(BigDecimal(totalSelections), 4, RoundingMode.HALF_UP)
+        } else {
+            BigDecimal.ONE
+        }
+
+        // Aplica proporção aos valores financeiros
+        val proportionalStake = event.stake.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
+        val proportionalProfit = event.profitLoss.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
 
         entity.totalSelections += selectionsInMarket
         entity.uniqueTickets++
@@ -448,8 +476,9 @@ class AnalyticsAggregationService(
         entity.ticketsPartialLost += ticketCounts.partialLost
         entity.ticketsTotalLost += ticketCounts.aggregatedLosses
 
-        entity.totalStake += event.stake
-        entity.totalProfit += event.profitLoss
+        // Adiciona valores proporcionais baseados no número de seleções
+        entity.totalStake += proportionalStake
+        entity.totalProfit += proportionalProfit
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
         // Taxas corrigidas: winRate baseado em SELEÇÕES, successRate baseado em TICKETS
         entity.winRate = calculateWinRate(entity.wins, entity.totalSelections)

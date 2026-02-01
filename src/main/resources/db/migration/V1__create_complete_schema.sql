@@ -467,6 +467,7 @@ CREATE TABLE analytics.performance_by_provider (
     win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     success_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     avg_odd DECIMAL(10,4) DEFAULT NULL,
+    avg_stake DECIMAL(10,2) DEFAULT NULL,
 
     -- Timestamps
     first_bet_at BIGINT,

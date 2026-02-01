@@ -80,6 +80,9 @@ data class PerformanceByProviderEntity(
     @Column(name = "avg_odd", precision = 10, scale = 4)
     var avgOdd: BigDecimal? = null,
 
+    @Column(name = "avg_stake", precision = 10, scale = 2)
+    var avgStake: BigDecimal? = null,
+
     // Timestamps
     @Column(name = "first_bet_at")
     var firstBetAt: Long? = null,

@@ -264,6 +264,8 @@ data class PerformanceByProviderResponse(
     val roi: BigDecimal,
     /** Média das odds dos tickets */
     val avgOdd: BigDecimal?,
+    /** Média do valor apostado por ticket */
+    val avgStake: BigDecimal?,
 
     // Métricas granulares
     val fullWinRate: BigDecimal,
