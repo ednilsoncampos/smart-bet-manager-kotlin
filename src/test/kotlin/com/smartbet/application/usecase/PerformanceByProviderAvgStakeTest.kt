@@ -66,8 +66,9 @@ class PerformanceByProviderAvgStakeTest {
 
         val provider = BettingProviderEntity(
             id = providerId,
+            slug = "betano",
             name = "Betano",
-            baseUrl = "https://betano.com"
+            websiteUrl = "https://betano.com"
         )
 
         every { byProviderRepository.findByIdUserId(userId) } returns listOf(performanceEntity)
@@ -118,8 +119,9 @@ class PerformanceByProviderAvgStakeTest {
 
         val provider = BettingProviderEntity(
             id = providerId,
+            slug = "superbet",
             name = "Superbet",
-            baseUrl = "https://superbet.com"
+            websiteUrl = "https://superbet.com"
         )
 
         every { byProviderRepository.findByIdUserId(userId) } returns listOf(performanceEntity)

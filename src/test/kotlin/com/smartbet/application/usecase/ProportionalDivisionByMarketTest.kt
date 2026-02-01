@@ -38,6 +38,12 @@ class ProportionalDivisionByMarketTest {
         byMarketRepository = mockk(relaxed = true)
         byTournamentRepository = mockk(relaxed = true)
 
+        // Configure save methods to return the argument they receive
+        every { overallRepository.save(any()) } answers { firstArg() }
+        every { byMonthRepository.save(any()) } answers { firstArg() }
+        every { byProviderRepository.save(any()) } answers { firstArg() }
+        every { byTournamentRepository.save(any()) } answers { firstArg() }
+
         service = AnalyticsAggregationService(
             overallRepository,
             byMonthRepository,
@@ -67,28 +73,28 @@ class ProportionalDivisionByMarketTest {
             settledAt = System.currentTimeMillis(),
             selections = listOf(
                 TicketSettledEvent.SelectionData(
-                    selectionId = 1L,
                     marketType = "Handicap",
                     tournamentId = 1L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 ),
                 TicketSettledEvent.SelectionData(
-                    selectionId = 2L,
                     marketType = "Handicap",
                     tournamentId = 2L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 ),
                 TicketSettledEvent.SelectionData(
-                    selectionId = 3L,
                     marketType = "Total de Gols",
                     tournamentId = 3L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 )
             )
         )
 
         val capturedEntities = mutableListOf<com.smartbet.infrastructure.persistence.entity.PerformanceByMarketEntity>()
-        every { byMarketRepository.findById(any()) } returns java.util.Optional.empty()
+        every { byMarketRepository.findByIdUserIdAndIdMarketType(any(), any()) } returns null
         every { byMarketRepository.save(capture(capturedEntities)) } answers { firstArg() }
 
         // When
@@ -145,16 +151,16 @@ class ProportionalDivisionByMarketTest {
             settledAt = System.currentTimeMillis(),
             selections = listOf(
                 TicketSettledEvent.SelectionData(
-                    selectionId = 1L,
                     marketType = "1X2",
                     tournamentId = 1L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 )
             )
         )
 
         val capturedEntity = slot<com.smartbet.infrastructure.persistence.entity.PerformanceByMarketEntity>()
-        every { byMarketRepository.findById(any()) } returns java.util.Optional.empty()
+        every { byMarketRepository.findByIdUserIdAndIdMarketType(any(), any()) } returns null
         every { byMarketRepository.save(capture(capturedEntity)) } answers { firstArg() }
 
         // When
@@ -192,40 +198,40 @@ class ProportionalDivisionByMarketTest {
             settledAt = System.currentTimeMillis(),
             selections = listOf(
                 TicketSettledEvent.SelectionData(
-                    selectionId = 1L,
                     marketType = "Handicap",
                     tournamentId = 1L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 ),
                 TicketSettledEvent.SelectionData(
-                    selectionId = 2L,
                     marketType = "Handicap",
                     tournamentId = 2L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 ),
                 TicketSettledEvent.SelectionData(
-                    selectionId = 3L,
                     marketType = "Total de Gols",
                     tournamentId = 3L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 ),
                 TicketSettledEvent.SelectionData(
-                    selectionId = 4L,
                     marketType = "Total de Gols",
                     tournamentId = 4L,
-                    status = SelectionStatus.LOST
+                    status = SelectionStatus.LOST,
+                    eventDate = null
                 ),
                 TicketSettledEvent.SelectionData(
-                    selectionId = 5L,
                     marketType = "Ambas Marcam",
                     tournamentId = 5L,
-                    status = SelectionStatus.LOST
+                    status = SelectionStatus.LOST,
+                    eventDate = null
                 )
             )
         )
 
         val capturedEntities = mutableListOf<com.smartbet.infrastructure.persistence.entity.PerformanceByMarketEntity>()
-        every { byMarketRepository.findById(any()) } returns java.util.Optional.empty()
+        every { byMarketRepository.findByIdUserIdAndIdMarketType(any(), any()) } returns null
         every { byMarketRepository.save(capture(capturedEntities)) } answers { firstArg() }
 
         // When
@@ -308,35 +314,36 @@ class ProportionalDivisionByMarketTest {
             settledAt = 2000L,
             selections = listOf(
                 TicketSettledEvent.SelectionData(
-                    selectionId = 4L,
                     marketType = "Handicap",
                     tournamentId = 1L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 ),
                 TicketSettledEvent.SelectionData(
-                    selectionId = 5L,
                     marketType = "Handicap",
                     tournamentId = 2L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 ),
                 TicketSettledEvent.SelectionData(
-                    selectionId = 6L,
                     marketType = "Total de Gols",
                     tournamentId = 3L,
-                    status = SelectionStatus.WON
+                    status = SelectionStatus.WON,
+                    eventDate = null
                 )
             )
         )
 
-        val capturedEntity = slot<com.smartbet.infrastructure.persistence.entity.PerformanceByMarketEntity>()
-        every { byMarketRepository.findById(PerformanceByMarketId(1L, "Handicap")) } returns java.util.Optional.of(existingEntity)
-        every { byMarketRepository.save(capture(capturedEntity)) } answers { firstArg() }
+        val capturedEntities = mutableListOf<com.smartbet.infrastructure.persistence.entity.PerformanceByMarketEntity>()
+        every { byMarketRepository.findByIdUserIdAndIdMarketType(1L, "Handicap") } returns existingEntity
+        every { byMarketRepository.findByIdUserIdAndIdMarketType(1L, "Total de Gols") } returns null
+        every { byMarketRepository.save(capture(capturedEntities)) } answers { firstArg() }
 
         // When
         service.updateOnSettlement(event)
 
         // Then: Deve adicionar proporcionalmente (2/3 de R$ 30 = R$ 20)
-        val updated = capturedEntity.captured
+        val updated = capturedEntities.find { it.id.marketType == "Handicap" }!!
         assertEquals(2, updated.uniqueTickets, "Deve ter 2 tickets únicos agora")
 
         // Stake anterior (R$ 20) + proporcional novo ticket (R$ 20) = R$ 40
