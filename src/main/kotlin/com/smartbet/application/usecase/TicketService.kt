@@ -580,6 +580,7 @@ class TicketService(
             selection.marketType?.let { marketType ->
                 TicketSettledEvent.SelectionData(
                     marketType = marketType,
+                    status = selection.status,
                     tournamentId = selection.tournament?.id,
                     eventDate = selection.eventDate
                 )
@@ -591,6 +592,7 @@ class TicketService(
             userId = ticket.userId,
             providerId = ticket.providerId,
             stake = ticket.stake,
+            totalOdd = ticket.totalOdd,
             actualPayout = ticket.actualPayout ?: BigDecimal.ZERO,
             profitLoss = ticket.profitLoss,
             roi = ticket.roi,

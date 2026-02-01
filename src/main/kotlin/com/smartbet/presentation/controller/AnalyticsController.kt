@@ -36,11 +36,15 @@ class AnalyticsController(
     }
     
     @GetMapping("/by-market")
-    @Operation(summary = "Performance por mercado", description = "Retorna performance agrupada por tipo de mercado")
+    @Operation(
+        summary = "Performance por mercado",
+        description = "Retorna performance agrupada por tipo de mercado. Use expandBetBuilder=true para expandir componentes do Bet Builder e agregá-los com mercados normais."
+    )
     fun getPerformanceByMarket(
-        @AuthenticationPrincipal userId: Long
+        @AuthenticationPrincipal userId: Long,
+        @RequestParam(defaultValue = "false") expandBetBuilder: Boolean
     ): ResponseEntity<List<PerformanceByMarketResponse>> {
-        val performance = performanceAnalyticService.getPerformanceByMarket(userId)
+        val performance = performanceAnalyticService.getPerformanceByMarket(userId, expandBetBuilder)
         return ResponseEntity.ok(performance)
     }
 

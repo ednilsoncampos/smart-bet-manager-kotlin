@@ -375,6 +375,7 @@ class SuperbetStrategy(
                 // Evento simples sem eventComponents
                 val marketName = event.path("market").path("name").asText()
                     .takeIf { it.isNotEmpty() }
+                    ?: "Mercado Desconhecido"  // Fallback para garantir que nunca seja null
 
                 val selectionName = oddNode.path("name").asText()
                     .ifEmpty { event.path("outcomeName").asText() }

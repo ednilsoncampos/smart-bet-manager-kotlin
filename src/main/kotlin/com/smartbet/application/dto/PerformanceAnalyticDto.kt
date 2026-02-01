@@ -32,7 +32,10 @@ data class OverallPerformanceResponse(
     val totalLosses: Long,
 
     // Métricas
+    /** Taxa de acerto pura - apenas vitórias completas (FULL_WIN) em % */
     val winRate: BigDecimal,
+    /** Taxa de sucesso - vitórias totais + parciais (FULL_WIN + PARTIAL_WIN) incluindo sistemas e cashouts em % */
+    val successRate: BigDecimal,
     val totalStaked: BigDecimal,
     val totalReturns: BigDecimal,
     val profitLoss: BigDecimal,
@@ -48,6 +51,10 @@ data class OverallPerformanceResponse(
     val partialWinRate: BigDecimal,
     /** Taxa de empate (break_even / total_bets * 100) */
     val breakEvenRate: BigDecimal,
+    /** Taxa de perda parcial (partial_losses / total_bets * 100) */
+    val partialLossRate: BigDecimal,
+    /** Taxa de perda total (total_losses / total_bets * 100) */
+    val totalLossRate: BigDecimal,
     /** Taxa de sucesso do cashout (partial_wins / (partial_wins + partial_losses) * 100), null se nenhum cashout */
     val cashoutSuccessRate: BigDecimal?,
 
@@ -93,7 +100,10 @@ data class PerformanceByMonthResponse(
     val totalLosses: Long,
 
     // Métricas
+    /** Taxa de acerto pura - apenas vitórias completas (FULL_WIN) em % */
     val winRate: BigDecimal,
+    /** Taxa de sucesso - vitórias totais + parciais (FULL_WIN + PARTIAL_WIN) em % */
+    val successRate: BigDecimal,
     val totalStaked: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
@@ -102,6 +112,8 @@ data class PerformanceByMonthResponse(
     // Métricas granulares
     val fullWinRate: BigDecimal,
     val partialWinRate: BigDecimal,
+    val partialLossRate: BigDecimal,
+    val totalLossRate: BigDecimal,
 
     // Timestamps
     val firstBetAt: Long?,
@@ -131,7 +143,10 @@ data class PerformanceByTournamentResponse(
     val totalLosses: Long,
 
     // Métricas
+    /** Taxa de acerto pura - apenas vitórias completas (FULL_WIN) em % */
     val winRate: BigDecimal,
+    /** Taxa de sucesso - vitórias totais + parciais (FULL_WIN + PARTIAL_WIN) em % */
+    val successRate: BigDecimal,
     val totalStaked: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
@@ -141,6 +156,8 @@ data class PerformanceByTournamentResponse(
     // Métricas granulares
     val fullWinRate: BigDecimal,
     val partialWinRate: BigDecimal,
+    val partialLossRate: BigDecimal,
+    val totalLossRate: BigDecimal,
 
     // Timestamps
     val firstBetAt: Long?,
@@ -170,7 +187,10 @@ data class PerformanceByMarketResponse(
     val totalLosses: Long,
 
     // Métricas
+    /** Taxa de acerto pura - apenas vitórias completas (FULL_WIN) em % */
     val winRate: BigDecimal,
+    /** Taxa de sucesso - vitórias totais + parciais (FULL_WIN + PARTIAL_WIN) em % */
+    val successRate: BigDecimal,
     val totalStaked: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
@@ -180,6 +200,8 @@ data class PerformanceByMarketResponse(
     // Métricas granulares
     val fullWinRate: BigDecimal,
     val partialWinRate: BigDecimal,
+    val partialLossRate: BigDecimal,
+    val totalLossRate: BigDecimal,
 
     // Timestamps
     val firstBetAt: Long?,
@@ -233,16 +255,23 @@ data class PerformanceByProviderResponse(
     val totalLosses: Long,
 
     // Métricas
+    /** Taxa de acerto pura - apenas vitórias completas (FULL_WIN) em % */
     val winRate: BigDecimal,
+    /** Taxa de sucesso - vitórias totais + parciais (FULL_WIN + PARTIAL_WIN) em % */
+    val successRate: BigDecimal,
     val totalStaked: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
     /** Média das odds dos tickets */
     val avgOdd: BigDecimal?,
+    /** Média do valor apostado por ticket */
+    val avgStake: BigDecimal?,
 
     // Métricas granulares
     val fullWinRate: BigDecimal,
     val partialWinRate: BigDecimal,
+    val partialLossRate: BigDecimal,
+    val totalLossRate: BigDecimal,
     val cashoutSuccessRate: BigDecimal?,
 
     // Timestamps

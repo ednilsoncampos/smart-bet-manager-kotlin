@@ -2,6 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: smart-bet-backend
+  namespace: smartbet-prod
   labels:
     app: smart-bet-backend
 spec:

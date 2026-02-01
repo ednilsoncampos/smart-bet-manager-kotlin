@@ -161,11 +161,18 @@ class PerformanceAnalyticServiceTest {
                 ticketsLost = 18,
                 ticketsVoid = 2,
                 ticketsCashedOut = 1,
+                ticketsFullWon = 30,  // 30/50 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 2,   // voids = break even
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 18,  // losses
                 totalStake = BigDecimal("5000.00"),
                 totalProfit = BigDecimal("1200.00"),
                 roi = BigDecimal("24.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.3000"),
+                avgStake = BigDecimal("100.00"),
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1735689600000L
             )
@@ -221,11 +228,18 @@ class PerformanceAnalyticServiceTest {
                 ticketsLost = 12,
                 ticketsVoid = 0,
                 ticketsCashedOut = 0,
+                ticketsFullWon = 18,  // 18/30 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 0,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 12,
                 totalStake = BigDecimal("3000.00"),
                 totalProfit = BigDecimal("600.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.0000"),
+                avgStake = BigDecimal("100.00"),
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1735689600000L
             )
@@ -237,11 +251,18 @@ class PerformanceAnalyticServiceTest {
                 ticketsLost = 8,
                 ticketsVoid = 0,
                 ticketsCashedOut = 0,
+                ticketsFullWon = 12,  // 12/20 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 0,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 8,
                 totalStake = BigDecimal("2000.00"),
                 totalProfit = BigDecimal("400.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.5000"),
+                avgStake = BigDecimal("100.00"),
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1735689600000L
             )
@@ -274,11 +295,18 @@ class PerformanceAnalyticServiceTest {
                 ticketsWon = 15,
                 ticketsLost = 9,
                 ticketsVoid = 1,
+                ticketsFullWon = 15,  // 15/25 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 1,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 9,
                 totalStake = BigDecimal("2500.00"),
                 totalProfit = BigDecimal("500.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgStake = BigDecimal("100.00"),
+                avgOdd = BigDecimal("2.5000"),
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1706745600000L
             )
@@ -328,11 +356,18 @@ class PerformanceAnalyticServiceTest {
                 ticketsWon = 12,
                 ticketsLost = 8,
                 ticketsVoid = 0,
+                ticketsFullWon = 12,  // 12/20 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 0,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 8,
                 totalStake = BigDecimal("2000.00"),
                 totalProfit = BigDecimal("400.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgStake = BigDecimal("100.00"),
+                avgOdd = BigDecimal("2.5000"),
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1706745600000L
             )
@@ -343,11 +378,18 @@ class PerformanceAnalyticServiceTest {
                 ticketsWon = 18,
                 ticketsLost = 12,
                 ticketsVoid = 0,
+                ticketsFullWon = 18,  // 18/30 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 0,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 12,
                 totalStake = BigDecimal("3000.00"),
                 totalProfit = BigDecimal("600.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgStake = BigDecimal("100.00"),
+                avgOdd = BigDecimal("2.5000"),
                 firstBetAt = 1701475200000L,
                 lastSettledAt = 1704067200000L
             )
@@ -358,11 +400,18 @@ class PerformanceAnalyticServiceTest {
                 ticketsWon = 9,
                 ticketsLost = 6,
                 ticketsVoid = 0,
+                ticketsFullWon = 9,  // 9/15 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 0,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 6,
                 totalStake = BigDecimal("1500.00"),
                 totalProfit = BigDecimal("300.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgStake = BigDecimal("100.00"),
+                avgOdd = BigDecimal("2.5000"),
                 firstBetAt = 1698883200000L,
                 lastSettledAt = 1701475200000L
             )
@@ -393,11 +442,18 @@ class PerformanceAnalyticServiceTest {
                 ticketsWon = 1,
                 ticketsLost = 0,
                 ticketsVoid = 0,
+                ticketsFullWon = 1,
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 0,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 0,
                 totalStake = BigDecimal("100.00"),
                 totalProfit = BigDecimal("50.00"),
                 roi = BigDecimal("50.0000"),
                 winRate = BigDecimal("100.00"),
+                successRate = BigDecimal("100.00"),
                 avgStake = null, // Sem avgStake
+                avgOdd = null,
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1704067200000L
             )
@@ -529,10 +585,16 @@ class PerformanceAnalyticServiceTest {
                 ticketsWon = 25,
                 ticketsLost = 14,
                 ticketsVoid = 1,
+                ticketsFullWon = 25,  // 25/40 * 100 = 62.50% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 1,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 14,
                 totalStake = BigDecimal("4000.00"),
                 totalProfit = BigDecimal("800.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("62.50"),
+                successRate = BigDecimal("62.50"),
                 avgOdd = BigDecimal("2.1000"),
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1735689600000L
@@ -602,10 +664,16 @@ class PerformanceAnalyticServiceTest {
                 ticketsWon = 18,
                 ticketsLost = 12,
                 ticketsVoid = 0,
+                ticketsFullWon = 18,  // 18/30 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 0,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 12,
                 totalStake = BigDecimal("3000.00"),
                 totalProfit = BigDecimal("600.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.0000"),
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1735689600000L
@@ -617,10 +685,16 @@ class PerformanceAnalyticServiceTest {
                 ticketsWon = 12,
                 ticketsLost = 8,
                 ticketsVoid = 0,
+                ticketsFullWon = 12,  // 12/20 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 0,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 8,
                 totalStake = BigDecimal("2000.00"),
                 totalProfit = BigDecimal("400.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.5000"),
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1735689600000L
@@ -648,10 +722,16 @@ class PerformanceAnalyticServiceTest {
                 ticketsWon = 6,
                 ticketsLost = 4,
                 ticketsVoid = 0,
+                ticketsFullWon = 6,  // 6/10 * 100 = 60% winRate
+                ticketsPartialWon = 0,
+                ticketsBreakEven = 0,
+                ticketsPartialLost = 0,
+                ticketsTotalLost = 4,
                 totalStake = BigDecimal("1000.00"),
                 totalProfit = BigDecimal("200.00"),
                 roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
+                successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.0000"),
                 firstBetAt = 1704067200000L,
                 lastSettledAt = 1735689600000L

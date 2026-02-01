@@ -1,6 +1,7 @@
 package com.smartbet.domain.event
 
 import com.smartbet.domain.enum.FinancialStatus
+import com.smartbet.domain.enum.SelectionStatus
 import com.smartbet.domain.enum.TicketStatus
 import java.math.BigDecimal
 
@@ -17,6 +18,7 @@ data class TicketSettledEvent(
 
     // Dados financeiros
     val stake: BigDecimal,
+    val totalOdd: BigDecimal,
     val actualPayout: BigDecimal,
     val profitLoss: BigDecimal,
     val roi: BigDecimal,
@@ -37,6 +39,7 @@ data class TicketSettledEvent(
      */
     data class SelectionData(
         val marketType: String,
+        val status: SelectionStatus,
         val tournamentId: Long?,
         val eventDate: Long?
     )
