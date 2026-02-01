@@ -1,6 +1,7 @@
 package com.smartbet.application.usecase
 
 import com.smartbet.domain.enum.FinancialStatus
+import com.smartbet.domain.enum.SelectionStatus
 import com.smartbet.domain.event.TicketSettledEvent
 import com.smartbet.domain.service.FinancialStatusRules
 import com.smartbet.infrastructure.persistence.entity.*
@@ -195,13 +196,14 @@ class AnalyticsAggregationService(
             ticketsPartialWon = counts.partialWon,
             ticketsBreakEven = counts.breakEven,
             ticketsPartialLost = counts.partialLost,
-            ticketsTotalLost = counts.aggregatedLosses,
+            ticketsTotalLost = counts.totalLosses,
             totalStake = event.stake,
             totalReturn = totalReturn,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(counts.aggregatedWins, 1),
-            avgOdd = null,
+            winRate = calculateWinRate(counts.fullWon, 1),
+            successRate = calculateWinRate(counts.aggregatedWins, 1),
+            avgOdd = event.totalOdd,
             avgStake = event.stake,
             currentStreak = if (counts.aggregatedWins > 0) 1 else if (counts.aggregatedLosses > 0) -1 else 0,
             bestWinStreak = if (counts.aggregatedWins > 0) 1 else 0,
@@ -230,12 +232,14 @@ class AnalyticsAggregationService(
             ticketsPartialWon = counts.partialWon,
             ticketsBreakEven = counts.breakEven,
             ticketsPartialLost = counts.partialLost,
-            ticketsTotalLost = counts.aggregatedLosses,
+            ticketsTotalLost = counts.totalLosses,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(counts.aggregatedWins, 1),
+            winRate = calculateWinRate(counts.fullWon, 1),
+            successRate = calculateWinRate(counts.aggregatedWins, 1),
             avgStake = event.stake,
+            avgOdd = event.totalOdd,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
             createdAt = System.currentTimeMillis(),
@@ -258,12 +262,13 @@ class AnalyticsAggregationService(
             ticketsPartialWon = counts.partialWon,
             ticketsBreakEven = counts.breakEven,
             ticketsPartialLost = counts.partialLost,
-            ticketsTotalLost = counts.aggregatedLosses,
+            ticketsTotalLost = counts.totalLosses,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(counts.aggregatedWins, 1),
-            avgOdd = null,
+            winRate = calculateWinRate(counts.fullWon, 1),
+            successRate = calculateWinRate(counts.aggregatedWins, 1),
+            avgOdd = event.totalOdd,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
             createdAt = System.currentTimeMillis(),
@@ -272,27 +277,30 @@ class AnalyticsAggregationService(
     }
 
     private fun createNewByMarket(id: PerformanceByMarketId, event: TicketSettledEvent): PerformanceByMarketEntity {
-        val counts = countTicketsByStatus(event)
+        val ticketCounts = countTicketsByStatus(event)
+        val selectionCounts = countSelectionsByStatus(event, id.marketType)
         val selectionsInMarket = event.selections.count { it.marketType == id.marketType }
 
         return PerformanceByMarketEntity(
             id = id,
             totalSelections = selectionsInMarket,
-            wins = counts.aggregatedWins,
-            losses = counts.aggregatedLosses,
-            voids = counts.aggregatedVoids,
+            wins = selectionCounts.wins,
+            losses = selectionCounts.losses,
+            voids = selectionCounts.voids,
             uniqueTickets = 1,
-            // Novos campos granulares
-            ticketsFullWon = counts.fullWon,
-            ticketsPartialWon = counts.partialWon,
-            ticketsBreakEven = counts.breakEven,
-            ticketsPartialLost = counts.partialLost,
-            ticketsTotalLost = counts.aggregatedLosses,
+            // Novos campos granulares (baseados no status do ticket)
+            ticketsFullWon = ticketCounts.fullWon,
+            ticketsPartialWon = ticketCounts.partialWon,
+            ticketsBreakEven = ticketCounts.breakEven,
+            ticketsPartialLost = ticketCounts.partialLost,
+            ticketsTotalLost = ticketCounts.totalLosses,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(counts.aggregatedWins, 1),
-            avgOdd = null,
+            // Taxas corrigidas: winRate baseado em SELEÇÕES, successRate baseado em TICKETS
+            winRate = calculateWinRate(selectionCounts.wins, selectionsInMarket),
+            successRate = calculateWinRate(ticketCounts.fullWon + ticketCounts.partialWon, 1),
+            avgOdd = event.totalOdd,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
             createdAt = System.currentTimeMillis(),
@@ -314,12 +322,13 @@ class AnalyticsAggregationService(
             ticketsPartialWon = counts.partialWon,
             ticketsBreakEven = counts.breakEven,
             ticketsPartialLost = counts.partialLost,
-            ticketsTotalLost = counts.aggregatedLosses,
+            ticketsTotalLost = counts.totalLosses,
             totalStake = event.stake,
             totalProfit = event.profitLoss,
             roi = event.roi,
-            winRate = calculateWinRate(counts.aggregatedWins, 1),
-            avgOdd = null,
+            winRate = calculateWinRate(counts.fullWon, 1),
+            successRate = calculateWinRate(counts.aggregatedWins, 1),
+            avgOdd = event.totalOdd,
             firstBetAt = event.settledAt,
             lastSettledAt = event.settledAt,
             createdAt = System.currentTimeMillis(),
@@ -343,7 +352,7 @@ class AnalyticsAggregationService(
         entity.ticketsPartialWon += counts.partialWon
         entity.ticketsBreakEven += counts.breakEven
         entity.ticketsPartialLost += counts.partialLost
-        entity.ticketsTotalLost += counts.aggregatedLosses
+        entity.ticketsTotalLost += counts.totalLosses
 
         // Atualiza valores financeiros
         entity.totalStake += event.stake
@@ -352,7 +361,9 @@ class AnalyticsAggregationService(
 
         // Recalcula métricas
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
-        entity.winRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
+        entity.winRate = calculateWinRate(entity.ticketsFullWon, entity.totalTickets)
+        entity.successRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
+        entity.avgOdd = calculateIncrementalAvg(entity.avgOdd, entity.totalTickets - 1, event.totalOdd, entity.totalTickets)
 
         // Atualiza gamificação: Streaks
         updateStreaks(entity, event.financialStatus)
@@ -379,12 +390,14 @@ class AnalyticsAggregationService(
         entity.ticketsPartialWon += counts.partialWon
         entity.ticketsBreakEven += counts.breakEven
         entity.ticketsPartialLost += counts.partialLost
-        entity.ticketsTotalLost += counts.aggregatedLosses
+        entity.ticketsTotalLost += counts.totalLosses
 
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
-        entity.winRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
+        entity.winRate = calculateWinRate(entity.ticketsFullWon, entity.totalTickets)
+        entity.successRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
+        entity.avgOdd = calculateIncrementalAvg(entity.avgOdd, entity.totalTickets - 1, event.totalOdd, entity.totalTickets)
         entity.lastSettledAt = event.settledAt
         entity.updatedAt = System.currentTimeMillis()
     }
@@ -403,39 +416,45 @@ class AnalyticsAggregationService(
         entity.ticketsPartialWon += counts.partialWon
         entity.ticketsBreakEven += counts.breakEven
         entity.ticketsPartialLost += counts.partialLost
-        entity.ticketsTotalLost += counts.aggregatedLosses
+        entity.ticketsTotalLost += counts.totalLosses
 
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
-        entity.winRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
+        entity.winRate = calculateWinRate(entity.ticketsFullWon, entity.totalTickets)
+        entity.successRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
+        entity.avgOdd = calculateIncrementalAvg(entity.avgOdd, entity.totalTickets - 1, event.totalOdd, entity.totalTickets)
         entity.lastSettledAt = event.settledAt
         entity.updatedAt = System.currentTimeMillis()
     }
 
     private fun updateExistingByMarket(entity: PerformanceByMarketEntity, event: TicketSettledEvent) {
-        val counts = countTicketsByStatus(event)
+        val ticketCounts = countTicketsByStatus(event)
+        val selectionCounts = countSelectionsByStatus(event, entity.id.marketType)
         val selectionsInMarket = event.selections.count { it.marketType == entity.id.marketType }
 
         entity.totalSelections += selectionsInMarket
         entity.uniqueTickets++
 
-        // Atualiza contadores agregados (compatibilidade)
-        entity.wins += counts.aggregatedWins
-        entity.losses += counts.aggregatedLosses
-        entity.voids += counts.aggregatedVoids
+        // Atualiza contadores de seleções (baseados no status individual de cada seleção)
+        entity.wins += selectionCounts.wins
+        entity.losses += selectionCounts.losses
+        entity.voids += selectionCounts.voids
 
-        // Atualiza contadores granulares
-        entity.ticketsFullWon += counts.fullWon
-        entity.ticketsPartialWon += counts.partialWon
-        entity.ticketsBreakEven += counts.breakEven
-        entity.ticketsPartialLost += counts.partialLost
-        entity.ticketsTotalLost += counts.aggregatedLosses
+        // Atualiza contadores granulares de tickets (baseados no status financeiro do ticket)
+        entity.ticketsFullWon += ticketCounts.fullWon
+        entity.ticketsPartialWon += ticketCounts.partialWon
+        entity.ticketsBreakEven += ticketCounts.breakEven
+        entity.ticketsPartialLost += ticketCounts.partialLost
+        entity.ticketsTotalLost += ticketCounts.aggregatedLosses
 
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
-        entity.winRate = calculateWinRate(entity.wins, entity.uniqueTickets)
+        // Taxas corrigidas: winRate baseado em SELEÇÕES, successRate baseado em TICKETS
+        entity.winRate = calculateWinRate(entity.wins, entity.totalSelections)
+        entity.successRate = calculateWinRate(entity.ticketsFullWon + entity.ticketsPartialWon, entity.uniqueTickets)
+        entity.avgOdd = calculateIncrementalAvg(entity.avgOdd, entity.uniqueTickets - 1, event.totalOdd, entity.uniqueTickets)
         entity.lastSettledAt = event.settledAt
         entity.updatedAt = System.currentTimeMillis()
     }
@@ -454,12 +473,14 @@ class AnalyticsAggregationService(
         entity.ticketsPartialWon += counts.partialWon
         entity.ticketsBreakEven += counts.breakEven
         entity.ticketsPartialLost += counts.partialLost
-        entity.ticketsTotalLost += counts.aggregatedLosses
+        entity.ticketsTotalLost += counts.totalLosses
 
         entity.totalStake += event.stake
         entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
-        entity.winRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
+        entity.winRate = calculateWinRate(entity.ticketsFullWon, entity.totalTickets)
+        entity.successRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)
+        entity.avgOdd = calculateIncrementalAvg(entity.avgOdd, entity.totalTickets - 1, event.totalOdd, entity.totalTickets)
         entity.lastSettledAt = event.settledAt
         entity.updatedAt = System.currentTimeMillis()
     }
@@ -543,6 +564,32 @@ class AnalyticsAggregationService(
     }
 
     /**
+     * Estrutura para contagem de seleções por status em um mercado específico.
+     */
+    private data class SelectionCounts(
+        val wins: Int = 0,
+        val losses: Int = 0,
+        val voids: Int = 0
+    )
+
+    /**
+     * Conta seleções de um mercado específico por status.
+     *
+     * @param event Evento de liquidação do ticket
+     * @param marketType Tipo de mercado a filtrar
+     * @return Contagem de wins/losses/voids das seleções deste mercado
+     */
+    private fun countSelectionsByStatus(event: TicketSettledEvent, marketType: String): SelectionCounts {
+        val selectionsInMarket = event.selections.filter { it.marketType == marketType }
+
+        val wins = selectionsInMarket.count { it.status == SelectionStatus.WON }
+        val losses = selectionsInMarket.count { it.status == SelectionStatus.LOST }
+        val voids = selectionsInMarket.count { it.status == SelectionStatus.VOID }
+
+        return SelectionCounts(wins, losses, voids)
+    }
+
+    /**
      * Conta tickets por status financeiro de forma granular.
      *
      * @return TicketCounts com contagem detalhada por FinancialStatus
@@ -576,6 +623,29 @@ class AnalyticsAggregationService(
             .divide(BigDecimal(total), 4, RoundingMode.HALF_UP)
             .multiply(BigDecimal(100))
             .setScale(2, RoundingMode.HALF_UP)
+    }
+
+    /**
+     * Calcula média incremental de forma eficiente.
+     * Fórmula: newAvg = ((oldAvg * oldCount) + newValue) / newCount
+     *
+     * @param currentAvg Média atual (pode ser null se for o primeiro valor)
+     * @param oldCount Quantidade anterior de valores
+     * @param newValue Novo valor a ser incluído na média
+     * @param newCount Nova quantidade total de valores
+     * @return Nova média calculada
+     */
+    private fun calculateIncrementalAvg(
+        currentAvg: BigDecimal?,
+        oldCount: Int,
+        newValue: BigDecimal,
+        newCount: Int
+    ): BigDecimal {
+        if (newCount == 0) return BigDecimal.ZERO
+        if (currentAvg == null || oldCount == 0) return newValue
+
+        val sum = currentAvg.multiply(BigDecimal(oldCount)).add(newValue)
+        return sum.divide(BigDecimal(newCount), 4, RoundingMode.HALF_UP)
     }
 
     /**

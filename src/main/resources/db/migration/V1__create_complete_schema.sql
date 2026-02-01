@@ -335,6 +335,7 @@ CREATE TABLE analytics.performance_overall (
     -- Métricas calculadas
     roi DECIMAL(10,4) NOT NULL DEFAULT 0,
     win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+    success_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     avg_odd DECIMAL(10,4) DEFAULT NULL,
     avg_stake DECIMAL(15,2) DEFAULT NULL,
 
@@ -366,6 +367,8 @@ CREATE INDEX idx_performance_overall_last_settled ON analytics.performance_overa
 COMMENT ON TABLE analytics.performance_overall IS 'Performance geral agregada por usuário (all-time)';
 COMMENT ON COLUMN analytics.performance_overall.current_streak IS 'Sequência atual: >0 = vitórias seguidas, <0 = derrotas seguidas';
 COMMENT ON COLUMN analytics.performance_overall.roi IS 'ROI em porcentagem (total_profit / total_stake * 100)';
+COMMENT ON COLUMN analytics.performance_overall.win_rate IS 'Taxa de acerto pura - apenas FULL_WIN (todas seleções corretas) em %';
+COMMENT ON COLUMN analytics.performance_overall.success_rate IS 'Taxa de sucesso - FULL_WIN + PARTIAL_WIN (ganhos totais + parciais incluindo sistemas e cashouts) em %';
 COMMENT ON COLUMN analytics.performance_overall.tickets_full_won IS 'Vitórias completas (FULL_WIN): retorno >= potencial máximo';
 COMMENT ON COLUMN analytics.performance_overall.tickets_partial_won IS 'Vitórias parciais (PARTIAL_WIN): via sistema parcial ou cashout com lucro';
 COMMENT ON COLUMN analytics.performance_overall.tickets_break_even IS 'Empates (BREAK_EVEN): retorno = stake (anulação, cashout exato, ou sistema)';
@@ -402,7 +405,9 @@ CREATE TABLE analytics.performance_by_month (
     -- Métricas calculadas
     roi DECIMAL(10,4) NOT NULL DEFAULT 0,
     win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+    success_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     avg_stake DECIMAL(15,2) DEFAULT NULL,
+    avg_odd DECIMAL(10,4) DEFAULT NULL,
 
     -- Timestamps
     first_bet_at BIGINT,
@@ -424,6 +429,8 @@ CREATE INDEX idx_performance_month_roi ON analytics.performance_by_month(user_id
 
 COMMENT ON TABLE analytics.performance_by_month IS 'Performance agregada por usuário e mês (permite consultas por período)';
 COMMENT ON COLUMN analytics.performance_by_month.month IS 'Mês do ano (1-12)';
+COMMENT ON COLUMN analytics.performance_by_month.win_rate IS 'Taxa de acerto pura - apenas FULL_WIN em %';
+COMMENT ON COLUMN analytics.performance_by_month.success_rate IS 'Taxa de sucesso - FULL_WIN + PARTIAL_WIN em %';
 COMMENT ON COLUMN analytics.performance_by_month.tickets_full_won IS 'Vitórias completas no mês';
 COMMENT ON COLUMN analytics.performance_by_month.tickets_partial_won IS 'Vitórias parciais no mês (sistema ou cashout)';
 COMMENT ON COLUMN analytics.performance_by_month.tickets_break_even IS 'Empates no mês';
@@ -458,6 +465,7 @@ CREATE TABLE analytics.performance_by_provider (
     -- Métricas calculadas
     roi DECIMAL(10,4) NOT NULL DEFAULT 0,
     win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+    success_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     avg_odd DECIMAL(10,4) DEFAULT NULL,
 
     -- Timestamps
@@ -479,6 +487,8 @@ CREATE INDEX idx_performance_provider_comparison ON analytics.performance_by_pro
 CREATE INDEX idx_performance_provider_profit ON analytics.performance_by_provider(total_profit DESC);
 
 COMMENT ON TABLE analytics.performance_by_provider IS 'Performance agregada por usuário e casa de aposta';
+COMMENT ON COLUMN analytics.performance_by_provider.win_rate IS 'Taxa de acerto pura - apenas FULL_WIN em %';
+COMMENT ON COLUMN analytics.performance_by_provider.success_rate IS 'Taxa de sucesso - FULL_WIN + PARTIAL_WIN em %';
 COMMENT ON COLUMN analytics.performance_by_provider.tickets_full_won IS 'Vitórias completas no provider';
 COMMENT ON COLUMN analytics.performance_by_provider.tickets_partial_won IS 'Vitórias parciais no provider';
 COMMENT ON COLUMN analytics.performance_by_provider.tickets_break_even IS 'Empates no provider';
@@ -515,6 +525,7 @@ CREATE TABLE analytics.performance_by_market (
     -- Métricas calculadas
     roi DECIMAL(10,4) NOT NULL DEFAULT 0,
     win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+    success_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     avg_odd DECIMAL(10,4) DEFAULT NULL,
 
     -- Timestamps
@@ -536,6 +547,8 @@ CREATE INDEX idx_performance_market_type_roi ON analytics.performance_by_market(
 COMMENT ON TABLE analytics.performance_by_market IS 'Performance agregada por usuário e tipo de mercado';
 COMMENT ON COLUMN analytics.performance_by_market.total_selections IS 'Total de seleções (uma aposta múltipla conta N vezes)';
 COMMENT ON COLUMN analytics.performance_by_market.unique_tickets IS 'Número de tickets únicos que incluem esse mercado';
+COMMENT ON COLUMN analytics.performance_by_market.win_rate IS 'Taxa de acerto pura - apenas FULL_WIN em %';
+COMMENT ON COLUMN analytics.performance_by_market.success_rate IS 'Taxa de sucesso - FULL_WIN + PARTIAL_WIN em %';
 COMMENT ON COLUMN analytics.performance_by_market.tickets_full_won IS 'Tickets com FULL_WIN que incluem este mercado';
 COMMENT ON COLUMN analytics.performance_by_market.tickets_partial_won IS 'Tickets com PARTIAL_WIN que incluem este mercado';
 COMMENT ON COLUMN analytics.performance_by_market.tickets_break_even IS 'Tickets com BREAK_EVEN que incluem este mercado';
@@ -569,6 +582,7 @@ CREATE TABLE analytics.performance_by_tournament (
     -- Métricas calculadas
     roi DECIMAL(10,4) NOT NULL DEFAULT 0,
     win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+    success_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     avg_odd DECIMAL(10,4) DEFAULT NULL,
 
     -- Timestamps
@@ -590,6 +604,8 @@ CREATE INDEX idx_performance_tournament_user_profit ON analytics.performance_by_
 CREATE INDEX idx_performance_tournament_comparison ON analytics.performance_by_tournament(tournament_id, roi DESC);
 
 COMMENT ON TABLE analytics.performance_by_tournament IS 'Performance agregada por usuário e torneio/campeonato';
+COMMENT ON COLUMN analytics.performance_by_tournament.win_rate IS 'Taxa de acerto pura - apenas FULL_WIN em %';
+COMMENT ON COLUMN analytics.performance_by_tournament.success_rate IS 'Taxa de sucesso - FULL_WIN + PARTIAL_WIN em %';
 COMMENT ON COLUMN analytics.performance_by_tournament.tickets_full_won IS 'Vitórias completas no torneio';
 COMMENT ON COLUMN analytics.performance_by_tournament.tickets_partial_won IS 'Vitórias parciais no torneio';
 COMMENT ON COLUMN analytics.performance_by_tournament.tickets_break_even IS 'Empates no torneio';

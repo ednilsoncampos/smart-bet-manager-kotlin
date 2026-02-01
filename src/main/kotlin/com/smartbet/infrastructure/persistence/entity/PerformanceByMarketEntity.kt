@@ -75,6 +75,9 @@ data class PerformanceByMarketEntity(
     @Column(name = "win_rate", nullable = false, precision = 5, scale = 2)
     var winRate: BigDecimal = BigDecimal.ZERO,
 
+    @Column(name = "success_rate", nullable = false, precision = 5, scale = 2)
+    var successRate: BigDecimal = BigDecimal.ZERO,
+
     @Column(name = "avg_odd", precision = 10, scale = 4)
     var avgOdd: BigDecimal? = null,
 
