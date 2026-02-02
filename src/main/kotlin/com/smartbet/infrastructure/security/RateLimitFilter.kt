@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
+import org.springframework.core.env.Environment
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.filter.OncePerRequestFilter
@@ -19,9 +20,13 @@ import java.util.concurrent.ConcurrentHashMap
  * - Ataques de força bruta em login
  * - Spam de registros
  * - DoS (Denial of Service)
+ *
+ * NOTA: Desabilitado em ambiente DEV para facilitar testes.
  */
 @Component
-class RateLimitFilter : OncePerRequestFilter() {
+class RateLimitFilter(
+    private val environment: Environment
+) : OncePerRequestFilter() {
 
     private val logger = LoggerFactory.getLogger(RateLimitFilter::class.java)
 
@@ -36,18 +41,19 @@ class RateLimitFilter : OncePerRequestFilter() {
             "/api/auth/refresh"
         )
 
-        // Configurações de rate limit
-        // Login: 5 tentativas por minuto
+        // Configurações de rate limit - PRODUÇÃO
         private const val LOGIN_CAPACITY = 5L
         private val LOGIN_REFILL_DURATION = Duration.ofMinutes(1)
 
-        // Register: 3 registros por hora
         private const val REGISTER_CAPACITY = 3L
         private val REGISTER_REFILL_DURATION = Duration.ofHours(1)
 
-        // Refresh: 10 por minuto
         private const val REFRESH_CAPACITY = 10L
         private val REFRESH_REFILL_DURATION = Duration.ofMinutes(1)
+
+        // Configurações de rate limit - DESENVOLVIMENTO
+        private const val DEV_CAPACITY = 1000L
+        private val DEV_REFILL_DURATION = Duration.ofMinutes(1)
     }
 
     override fun doFilterInternal(
@@ -99,23 +105,34 @@ class RateLimitFilter : OncePerRequestFilter() {
      * Cria um novo bucket com configurações específicas por endpoint
      */
     private fun createBucket(path: String): Bucket {
-        val bandwidth = when {
-            path.contains("/login") -> Bandwidth.builder()
-                .capacity(LOGIN_CAPACITY)
-                .refillIntervally(LOGIN_CAPACITY, LOGIN_REFILL_DURATION)
+        val isDev = environment.activeProfiles.contains("dev")
+
+        val bandwidth = if (isDev) {
+            // Em DEV: limites muito altos (1000 req/min) para facilitar testes
+            Bandwidth.builder()
+                .capacity(DEV_CAPACITY)
+                .refillIntervally(DEV_CAPACITY, DEV_REFILL_DURATION)
                 .build()
-            path.contains("/register") -> Bandwidth.builder()
-                .capacity(REGISTER_CAPACITY)
-                .refillIntervally(REGISTER_CAPACITY, REGISTER_REFILL_DURATION)
-                .build()
-            path.contains("/refresh") -> Bandwidth.builder()
-                .capacity(REFRESH_CAPACITY)
-                .refillIntervally(REFRESH_CAPACITY, REFRESH_REFILL_DURATION)
-                .build()
-            else -> Bandwidth.builder()
-                .capacity(10)
-                .refillIntervally(10, Duration.ofMinutes(1))
-                .build()
+        } else {
+            // Em PROD/STAGING: limites restritivos para segurança
+            when {
+                path.contains("/login") -> Bandwidth.builder()
+                    .capacity(LOGIN_CAPACITY)
+                    .refillIntervally(LOGIN_CAPACITY, LOGIN_REFILL_DURATION)
+                    .build()
+                path.contains("/register") -> Bandwidth.builder()
+                    .capacity(REGISTER_CAPACITY)
+                    .refillIntervally(REGISTER_CAPACITY, REGISTER_REFILL_DURATION)
+                    .build()
+                path.contains("/refresh") -> Bandwidth.builder()
+                    .capacity(REFRESH_CAPACITY)
+                    .refillIntervally(REFRESH_CAPACITY, REFRESH_REFILL_DURATION)
+                    .build()
+                else -> Bandwidth.builder()
+                    .capacity(10)
+                    .refillIntervally(10, Duration.ofMinutes(1))
+                    .build()
+            }
         }
 
         return Bucket.builder()

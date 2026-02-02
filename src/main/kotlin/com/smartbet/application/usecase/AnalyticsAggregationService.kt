@@ -282,19 +282,6 @@ class AnalyticsAggregationService(
         val selectionCounts = countSelectionsByStatus(event, id.marketType)
         val selectionsInMarket = event.selections.count { it.marketType == id.marketType }
 
-        // Calcula divisão proporcional baseada no número de seleções
-        val totalSelections = event.selections.size
-        val proportion = if (totalSelections > 0) {
-            BigDecimal(selectionsInMarket).divide(BigDecimal(totalSelections), 4, RoundingMode.HALF_UP)
-        } else {
-            BigDecimal.ONE
-        }
-
-        // Aplica proporção aos valores financeiros
-        val proportionalStake = event.stake.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
-        val proportionalProfit = event.profitLoss.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
-        val proportionalRoi = calculateRoi(proportionalProfit, proportionalStake)
-
         return PerformanceByMarketEntity(
             id = id,
             totalSelections = selectionsInMarket,
@@ -308,11 +295,11 @@ class AnalyticsAggregationService(
             ticketsBreakEven = ticketCounts.breakEven,
             ticketsPartialLost = ticketCounts.partialLost,
             ticketsTotalLost = ticketCounts.totalLosses,
-            // Valores proporcionais baseados no número de seleções
-            totalStake = proportionalStake,
-            totalProfit = proportionalProfit,
-            roi = proportionalRoi,
-            // Taxas corrigidas: winRate baseado em SELEÇÕES, successRate baseado em TICKETS
+            // Valores completos do ticket (sem divisão proporcional)
+            totalStake = event.stake,
+            totalProfit = event.profitLoss,
+            roi = event.roi,
+            // Taxas: winRate baseado em SELEÇÕES, successRate baseado em TICKETS
             winRate = calculateWinRate(selectionCounts.wins, selectionsInMarket),
             successRate = calculateWinRate(ticketCounts.fullWon + ticketCounts.partialWon, 1),
             avgOdd = event.totalOdd,
@@ -326,6 +313,20 @@ class AnalyticsAggregationService(
     private fun createNewByTournament(id: PerformanceByTournamentId, event: TicketSettledEvent): PerformanceByTournamentEntity {
         val counts = countTicketsByStatus(event)
 
+        // Calcula divisão proporcional baseada no número de seleções de cada torneio
+        val selectionsInTournament = event.selections.count { it.tournamentId == id.tournamentId }
+        val totalSelections = event.selections.size
+        val proportion = if (totalSelections > 0) {
+            BigDecimal(selectionsInTournament).divide(BigDecimal(totalSelections), 4, RoundingMode.HALF_UP)
+        } else {
+            BigDecimal.ONE
+        }
+
+        // Aplica proporção aos valores financeiros
+        val proportionalStake = event.stake.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
+        val proportionalProfit = event.profitLoss.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
+        val proportionalRoi = calculateRoi(proportionalProfit, proportionalStake)
+
         return PerformanceByTournamentEntity(
             id = id,
             totalTickets = 1,
@@ -338,9 +339,9 @@ class AnalyticsAggregationService(
             ticketsBreakEven = counts.breakEven,
             ticketsPartialLost = counts.partialLost,
             ticketsTotalLost = counts.totalLosses,
-            totalStake = event.stake,
-            totalProfit = event.profitLoss,
-            roi = event.roi,
+            totalStake = proportionalStake,
+            totalProfit = proportionalProfit,
+            roi = proportionalRoi,
             winRate = calculateWinRate(counts.fullWon, 1),
             successRate = calculateWinRate(counts.aggregatedWins, 1),
             avgOdd = event.totalOdd,
@@ -449,18 +450,6 @@ class AnalyticsAggregationService(
         val selectionCounts = countSelectionsByStatus(event, entity.id.marketType)
         val selectionsInMarket = event.selections.count { it.marketType == entity.id.marketType }
 
-        // Calcula divisão proporcional baseada no número de seleções
-        val totalSelections = event.selections.size
-        val proportion = if (totalSelections > 0) {
-            BigDecimal(selectionsInMarket).divide(BigDecimal(totalSelections), 4, RoundingMode.HALF_UP)
-        } else {
-            BigDecimal.ONE
-        }
-
-        // Aplica proporção aos valores financeiros
-        val proportionalStake = event.stake.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
-        val proportionalProfit = event.profitLoss.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
-
         entity.totalSelections += selectionsInMarket
         entity.uniqueTickets++
 
@@ -474,13 +463,13 @@ class AnalyticsAggregationService(
         entity.ticketsPartialWon += ticketCounts.partialWon
         entity.ticketsBreakEven += ticketCounts.breakEven
         entity.ticketsPartialLost += ticketCounts.partialLost
-        entity.ticketsTotalLost += ticketCounts.aggregatedLosses
+        entity.ticketsTotalLost += ticketCounts.totalLosses
 
-        // Adiciona valores proporcionais baseados no número de seleções
-        entity.totalStake += proportionalStake
-        entity.totalProfit += proportionalProfit
+        // Adiciona valores completos do ticket (sem divisão proporcional)
+        entity.totalStake += event.stake
+        entity.totalProfit += event.profitLoss
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
-        // Taxas corrigidas: winRate baseado em SELEÇÕES, successRate baseado em TICKETS
+        // Taxas: winRate baseado em SELEÇÕES, successRate baseado em TICKETS
         entity.winRate = calculateWinRate(entity.wins, entity.totalSelections)
         entity.successRate = calculateWinRate(entity.ticketsFullWon + entity.ticketsPartialWon, entity.uniqueTickets)
         entity.avgOdd = calculateIncrementalAvg(entity.avgOdd, entity.uniqueTickets - 1, event.totalOdd, entity.uniqueTickets)
@@ -490,6 +479,19 @@ class AnalyticsAggregationService(
 
     private fun updateExistingByTournament(entity: PerformanceByTournamentEntity, event: TicketSettledEvent) {
         val counts = countTicketsByStatus(event)
+
+        // Calcula divisão proporcional baseada no número de seleções de cada torneio
+        val selectionsInTournament = event.selections.count { it.tournamentId == entity.id.tournamentId }
+        val totalSelections = event.selections.size
+        val proportion = if (totalSelections > 0) {
+            BigDecimal(selectionsInTournament).divide(BigDecimal(totalSelections), 4, RoundingMode.HALF_UP)
+        } else {
+            BigDecimal.ONE
+        }
+
+        // Aplica proporção aos valores financeiros
+        val proportionalStake = event.stake.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
+        val proportionalProfit = event.profitLoss.multiply(proportion).setScale(2, RoundingMode.HALF_UP)
 
         // Atualiza contadores agregados (compatibilidade)
         entity.totalTickets++
@@ -504,8 +506,8 @@ class AnalyticsAggregationService(
         entity.ticketsPartialLost += counts.partialLost
         entity.ticketsTotalLost += counts.totalLosses
 
-        entity.totalStake += event.stake
-        entity.totalProfit += event.profitLoss
+        entity.totalStake += proportionalStake
+        entity.totalProfit += proportionalProfit
         entity.roi = calculateRoi(entity.totalProfit, entity.totalStake)
         entity.winRate = calculateWinRate(entity.ticketsFullWon, entity.totalTickets)
         entity.successRate = calculateWinRate(entity.ticketsWon, entity.totalTickets)

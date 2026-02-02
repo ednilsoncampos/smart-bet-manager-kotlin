@@ -1,13 +1,16 @@
 package com.smartbet.application.usecase
 
 import com.smartbet.application.dto.*
-import com.smartbet.domain.entity.User
 import com.smartbet.infrastructure.persistence.entity.UserEntity
 import com.smartbet.infrastructure.persistence.repository.UserRepository
 import com.smartbet.infrastructure.security.JwtService
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.Instant
+import java.time.LocalDate
+import java.time.Period
+import java.time.ZoneId
 
 @Service
 class AuthService(
@@ -23,21 +26,46 @@ class AuthService(
             throw IllegalArgumentException("Email já cadastrado")
         }
         
+        // Validar maioridade
+        val dateOfBirth = request.dateOfBirth
+            ?: throw IllegalArgumentException("Data de nascimento é obrigatória")
+
+        val dobInstant = Instant.ofEpochMilli(dateOfBirth)
+        val dobLocalDate = dobInstant.atZone(ZoneId.systemDefault()).toLocalDate()
+
+        // Validar data futura
+        if (dobLocalDate.isAfter(LocalDate.now())) {
+            throw IllegalArgumentException("Data de nascimento não pode ser no futuro")
+        }
+
+        val age = Period.between(dobLocalDate, LocalDate.now()).years
+
+        // Validar data muito antiga
+        if (age > 120) {
+            throw IllegalArgumentException("Data de nascimento inválida")
+        }
+
+        if (age < 18) {
+            throw IllegalArgumentException("É necessário ter 18 anos ou mais para se cadastrar")
+        }
+
         // Criar usuário
         val now = System.currentTimeMillis()
         val userEntity = UserEntity(
             name = request.name,
             email = request.email,
             passwordHash = passwordEncoder.encode(request.password),
+            dateOfBirth = dateOfBirth,
             createdAt = now,
             updatedAt = now
         )
         
         val savedUser = userRepository.save(userEntity)
-        
+        val savedUserId = savedUser.id ?: throw IllegalStateException("Falha ao cadastrar usuário.")
+
         // Gerar tokens
-        val accessToken = jwtService.generateAccessToken(savedUser.id!!, savedUser.email, savedUser.role.name)
-        val refreshToken = jwtService.generateRefreshToken(savedUser.id, savedUser.email, savedUser.role.name)
+        val accessToken = jwtService.generateAccessToken(savedUserId, savedUser.email, savedUser.role.name)
+        val refreshToken = jwtService.generateRefreshToken(savedUserId, savedUser.email, savedUser.role.name)
 
         return AuthResponse(
             accessToken = accessToken,
@@ -57,9 +85,10 @@ class AuthService(
             throw IllegalArgumentException("Credenciais inválidas")
         }
         
+        val userId = userEntity.id ?: throw IllegalStateException("User id is null")
         // Gerar tokens
-        val accessToken = jwtService.generateAccessToken(userEntity.id!!, userEntity.email, userEntity.role.name)
-        val refreshToken = jwtService.generateRefreshToken(userEntity.id!!, userEntity.email, userEntity.role.name)
+        val accessToken = jwtService.generateAccessToken(userId, userEntity.email, userEntity.role.name)
+        val refreshToken = jwtService.generateRefreshToken(userId, userEntity.email, userEntity.role.name)
 
         return AuthResponse(
             accessToken = accessToken,
@@ -76,17 +105,18 @@ class AuthService(
         }
         
         // Extrair userId do token
-        val userId = jwtService.getUserIdFromToken(request.refreshToken)
+        val userIdFromToken = jwtService.getUserIdFromToken(request.refreshToken)
             ?: throw IllegalArgumentException("Token inválido")
         
         // Buscar usuário
-        val userEntity = userRepository.findById(userId).orElseThrow {
+        val userEntity = userRepository.findById(userIdFromToken).orElseThrow {
             IllegalArgumentException("Usuário não encontrado")
         }
         
+        val userId = userEntity.id ?: throw IllegalStateException("User id is null")
         // Gerar novos tokens
-        val accessToken = jwtService.generateAccessToken(userEntity.id!!, userEntity.email, userEntity.role.name)
-        val refreshToken = jwtService.generateRefreshToken(userEntity.id!!, userEntity.email, userEntity.role.name)
+        val accessToken = jwtService.generateAccessToken(userId, userEntity.email, userEntity.role.name)
+        val refreshToken = jwtService.generateRefreshToken(userId, userEntity.email, userEntity.role.name)
 
         return TokenRefreshResponse(
             accessToken = accessToken,
@@ -123,6 +153,7 @@ class AuthService(
         id = this.id!!,
         name = this.name,
         email = this.email,
-        createdAt = this.createdAt
+        createdAt = this.createdAt,
+        dateOfBirth = this.dateOfBirth
     )
 }

@@ -16,12 +16,15 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
- * Testes para validar a divisão proporcional de stake/profit por mercado.
+ * Testes para validar que cada mercado usa o stake COMPLETO do ticket.
  *
- * A lógica de divisão proporcional garante que a soma dos stakes de todos
- * os mercados seja igual ao stake total do ticket, evitando inflação de valores.
+ * A lógica correta é que cada mercado em um ticket múltiplo está exposto
+ * ao risco total do bilhete, portanto deve contar o stake completo.
+ *
+ * Nota: A soma dos stakes por mercado será maior que o stake total investido
+ * quando há apostas múltiplas, o que é ESPERADO para análise dimensional.
  */
-class ProportionalDivisionByMarketTest {
+class PerformanceByMarketFullStakeTest {
 
     private lateinit var service: AnalyticsAggregationService
     private lateinit var byMarketRepository: PerformanceByMarketRepository
@@ -54,7 +57,7 @@ class ProportionalDivisionByMarketTest {
     }
 
     @Test
-    fun `should divide stake proportionally when ticket has 3 selections in 2 different markets`() {
+    fun `should use full stake for each market when ticket has 3 selections in 2 different markets`() {
         // Given: Ticket com 3 seleções em 2 mercados
         // - 2x Handicap
         // - 1x Total de Gols
@@ -110,27 +113,21 @@ class ProportionalDivisionByMarketTest {
         assertNotNull(handicapEntity, "Deve criar registro para Handicap")
         assertNotNull(totalGolsEntity, "Deve criar registro para Total de Gols")
 
-        // Handicap: 2 seleções de 3 total = 2/3 = 0.6667
-        // Stake: R$ 30 × 0.6667 = R$ 20.00
-        // Profit: R$ 15 × 0.6667 = R$ 10.00
-        assertEquals(BigDecimal("20.00"), handicapEntity!!.totalStake, "Handicap deve ter 2/3 do stake")
-        assertEquals(BigDecimal("10.00"), handicapEntity.totalProfit, "Handicap deve ter 2/3 do profit")
-        assertEquals(BigDecimal("50.00"), handicapEntity.roi.setScale(2, RoundingMode.HALF_UP), "ROI deve ser recalculado corretamente")
+        // Ambos mercados devem ter o stake COMPLETO do ticket
+        assertEquals(BigDecimal("30.00"), handicapEntity!!.totalStake, "Handicap deve ter stake completo")
+        assertEquals(BigDecimal("15.00"), handicapEntity.totalProfit, "Handicap deve ter profit completo")
+        assertEquals(BigDecimal("50.00"), handicapEntity.roi.setScale(2, RoundingMode.HALF_UP), "ROI deve ser 50%")
 
-        // Total de Gols: 1 seleção de 3 total = 1/3 = 0.3333
-        // Stake: R$ 30 × 0.3333 = R$ 10.00
-        // Profit: R$ 15 × 0.3333 = R$ 5.00
-        assertEquals(BigDecimal("10.00"), totalGolsEntity!!.totalStake, "Total de Gols deve ter 1/3 do stake")
-        assertEquals(BigDecimal("5.00"), totalGolsEntity.totalProfit, "Total de Gols deve ter 1/3 do profit")
-        assertEquals(BigDecimal("50.00"), totalGolsEntity.roi.setScale(2, RoundingMode.HALF_UP), "ROI deve ser recalculado corretamente")
+        assertEquals(BigDecimal("30.00"), totalGolsEntity!!.totalStake, "Total de Gols deve ter stake completo")
+        assertEquals(BigDecimal("15.00"), totalGolsEntity.totalProfit, "Total de Gols deve ter profit completo")
+        assertEquals(BigDecimal("50.00"), totalGolsEntity.roi.setScale(2, RoundingMode.HALF_UP), "ROI deve ser 50%")
 
-        // Valida que a soma dos stakes = stake total do ticket
-        val totalStake = handicapEntity.totalStake.add(totalGolsEntity.totalStake)
-        assertEquals(BigDecimal("30.00"), totalStake, "Soma dos stakes deve ser igual ao stake total do ticket")
+        // Valida contadores de seleções (baseado em seleções individuais por mercado)
+        assertEquals(2, handicapEntity.totalSelections, "Handicap deve ter 2 seleções")
+        assertEquals(1, totalGolsEntity.totalSelections, "Total de Gols deve ter 1 seleção")
 
-        // Valida que a soma dos profits = profit total do ticket
-        val totalProfit = handicapEntity.totalProfit.add(totalGolsEntity.totalProfit)
-        assertEquals(BigDecimal("15.00"), totalProfit, "Soma dos profits deve ser igual ao profit total do ticket")
+        // NOTA: Soma dos stakes (R$ 30 + R$ 30 = R$ 60) > stake investido (R$ 30)
+        // Isso é ESPERADO e CORRETO para análise por dimensão
     }
 
     @Test
@@ -169,16 +166,13 @@ class ProportionalDivisionByMarketTest {
         // Then: Verifica que foi criado 1 registro
         verify(exactly = 1) { byMarketRepository.save(any()) }
 
-        // 1X2: 1 seleção de 1 total = 1/1 = 1.0000
-        // Stake: R$ 15 × 1.0 = R$ 15.00
-        // Profit: R$ 30 × 1.0 = R$ 30.00
         assertEquals(BigDecimal("15.00"), capturedEntity.captured.totalStake, "Deve usar stake completo")
         assertEquals(BigDecimal("30.00"), capturedEntity.captured.totalProfit, "Deve usar profit completo")
         assertEquals(BigDecimal("200.00"), capturedEntity.captured.roi.setScale(2, RoundingMode.HALF_UP), "ROI deve ser 200%")
     }
 
     @Test
-    fun `should divide proportionally with 5 selections across 3 markets`() {
+    fun `should use full stake with 5 selections across 3 markets`() {
         // Given: Ticket com 5 seleções em 3 mercados
         // - 2x Handicap
         // - 2x Total de Gols
@@ -248,32 +242,35 @@ class ProportionalDivisionByMarketTest {
         assertNotNull(totalGolsEntity)
         assertNotNull(ambasMarcamEntity)
 
-        // Handicap: 2/5 = 0.4
-        assertEquals(BigDecimal("20.00"), handicapEntity!!.totalStake)
-        assertEquals(BigDecimal("-8.00"), handicapEntity.totalProfit)
+        // Todos mercados devem ter stake e profit COMPLETOS
+        assertEquals(BigDecimal("50.00"), handicapEntity!!.totalStake)
+        assertEquals(BigDecimal("-20.00"), handicapEntity.totalProfit)
+        assertEquals(BigDecimal("-40.00"), handicapEntity.roi.setScale(2, RoundingMode.HALF_UP))
 
-        // Total de Gols: 2/5 = 0.4
-        assertEquals(BigDecimal("20.00"), totalGolsEntity!!.totalStake)
-        assertEquals(BigDecimal("-8.00"), totalGolsEntity.totalProfit)
+        assertEquals(BigDecimal("50.00"), totalGolsEntity!!.totalStake)
+        assertEquals(BigDecimal("-20.00"), totalGolsEntity.totalProfit)
+        assertEquals(BigDecimal("-40.00"), totalGolsEntity.roi.setScale(2, RoundingMode.HALF_UP))
 
-        // Ambas Marcam: 1/5 = 0.2
-        assertEquals(BigDecimal("10.00"), ambasMarcamEntity!!.totalStake)
-        assertEquals(BigDecimal("-4.00"), ambasMarcamEntity.totalProfit)
+        assertEquals(BigDecimal("50.00"), ambasMarcamEntity!!.totalStake)
+        assertEquals(BigDecimal("-20.00"), ambasMarcamEntity.totalProfit)
+        assertEquals(BigDecimal("-40.00"), ambasMarcamEntity.roi.setScale(2, RoundingMode.HALF_UP))
 
-        // Valida soma total
-        val totalStake = handicapEntity.totalStake
-            .add(totalGolsEntity.totalStake)
-            .add(ambasMarcamEntity.totalStake)
-        assertEquals(BigDecimal("50.00"), totalStake, "Soma deve ser R$ 50")
+        // Valida contadores de seleções por mercado
+        assertEquals(2, handicapEntity.wins, "Handicap: 2 seleções ganhas")
+        assertEquals(0, handicapEntity.losses, "Handicap: 0 seleções perdidas")
 
-        val totalProfit = handicapEntity.totalProfit
-            .add(totalGolsEntity.totalProfit)
-            .add(ambasMarcamEntity.totalProfit)
-        assertEquals(BigDecimal("-20.00"), totalProfit, "Soma deve ser R$ -20")
+        assertEquals(1, totalGolsEntity.wins, "Total de Gols: 1 seleção ganha")
+        assertEquals(1, totalGolsEntity.losses, "Total de Gols: 1 seleção perdida")
+
+        assertEquals(0, ambasMarcamEntity.wins, "Ambas Marcam: 0 seleções ganhas")
+        assertEquals(1, ambasMarcamEntity.losses, "Ambas Marcam: 1 seleção perdida")
+
+        // NOTA: Soma dos stakes = R$ 150 (3 × R$ 50) > stake investido (R$ 50)
+        // Isso é ESPERADO para análise dimensional
     }
 
     @Test
-    fun `should handle update existing market with proportional division`() {
+    fun `should handle update existing market with full stake`() {
         // Given: Registro existente + novo ticket do mesmo usuário e mercado
         val existingEntity = com.smartbet.infrastructure.persistence.entity.PerformanceByMarketEntity(
             id = PerformanceByMarketId(userId = 1L, marketType = "Handicap"),
@@ -287,8 +284,8 @@ class ProportionalDivisionByMarketTest {
             ticketsBreakEven = 0,
             ticketsPartialLost = 0,
             ticketsTotalLost = 0,
-            totalStake = BigDecimal("20.00"),  // Já tinha R$ 20 (2/3 de um ticket de R$ 30)
-            totalProfit = BigDecimal("10.00"),
+            totalStake = BigDecimal("30.00"),  // Já tinha R$ 30 de um ticket anterior
+            totalProfit = BigDecimal("15.00"),
             roi = BigDecimal("50.00"),
             winRate = BigDecimal("100.00"),
             successRate = BigDecimal("100.00"),
@@ -342,17 +339,70 @@ class ProportionalDivisionByMarketTest {
         // When
         service.updateOnSettlement(event)
 
-        // Then: Deve adicionar proporcionalmente (2/3 de R$ 30 = R$ 20)
+        // Then: Deve adicionar stake COMPLETO (R$ 30)
         val updated = capturedEntities.find { it.id.marketType == "Handicap" }!!
         assertEquals(2, updated.uniqueTickets, "Deve ter 2 tickets únicos agora")
 
-        // Stake anterior (R$ 20) + proporcional novo ticket (R$ 20) = R$ 40
-        assertEquals(BigDecimal("40.00"), updated.totalStake, "Deve somar R$ 20 + R$ 20 = R$ 40")
+        // Stake anterior (R$ 30) + novo ticket completo (R$ 30) = R$ 60
+        assertEquals(BigDecimal("60.00"), updated.totalStake, "Deve somar R$ 30 + R$ 30 = R$ 60")
 
-        // Profit anterior (R$ 10) + proporcional novo ticket (R$ 10) = R$ 20
-        assertEquals(BigDecimal("20.00"), updated.totalProfit, "Deve somar R$ 10 + R$ 10 = R$ 20")
+        // Profit anterior (R$ 15) + novo ticket completo (R$ 15) = R$ 30
+        assertEquals(BigDecimal("30.00"), updated.totalProfit, "Deve somar R$ 15 + R$ 15 = R$ 30")
 
-        // ROI recalculado: (R$ 20 / R$ 40) × 100 = 50%
+        // ROI recalculado: (R$ 30 / R$ 60) × 100 = 50%
         assertEquals(BigDecimal("50.00"), updated.roi.setScale(2, RoundingMode.HALF_UP), "ROI deve continuar 50%")
+    }
+
+    @Test
+    fun `should calculate winRate based on selections and successRate based on tickets`() {
+        // Given: Ticket com 10 seleções (7 wins, 3 losses) e status PARTIAL_WIN
+        val event = TicketSettledEvent(
+            ticketId = 4L,
+            userId = 1L,
+            providerId = 1L,
+            stake = BigDecimal("100.00"),
+            totalOdd = BigDecimal("5.00"),
+            actualPayout = BigDecimal("120.00"),
+            profitLoss = BigDecimal("20.00"),
+            roi = BigDecimal("20.00"),
+            ticketStatus = com.smartbet.domain.enum.TicketStatus.WIN,
+            financialStatus = FinancialStatus.PARTIAL_WIN,
+            settledAt = System.currentTimeMillis(),
+            selections = (1..7).map {
+                TicketSettledEvent.SelectionData(
+                    marketType = "Handicap",
+                    tournamentId = it.toLong(),
+                    status = SelectionStatus.WON,
+                    eventDate = null
+                )
+            } + (8..10).map {
+                TicketSettledEvent.SelectionData(
+                    marketType = "Handicap",
+                    tournamentId = it.toLong(),
+                    status = SelectionStatus.LOST,
+                    eventDate = null
+                )
+            }
+        )
+
+        val capturedEntity = slot<com.smartbet.infrastructure.persistence.entity.PerformanceByMarketEntity>()
+        every { byMarketRepository.findByIdUserIdAndIdMarketType(any(), any()) } returns null
+        every { byMarketRepository.save(capture(capturedEntity)) } answers { firstArg() }
+
+        // When
+        service.updateOnSettlement(event)
+
+        // Then
+        val entity = capturedEntity.captured
+
+        // winRate = (7 wins / 10 seleções) × 100 = 70%
+        assertEquals(BigDecimal("70.00"), entity.winRate.setScale(2, RoundingMode.HALF_UP), "winRate deve ser 70%")
+
+        // successRate = (1 partialWin / 1 ticket) × 100 = 100%
+        assertEquals(BigDecimal("100.00"), entity.successRate.setScale(2, RoundingMode.HALF_UP), "successRate deve ser 100%")
+
+        assertEquals(7, entity.wins, "Deve ter 7 seleções ganhas")
+        assertEquals(3, entity.losses, "Deve ter 3 seleções perdidas")
+        assertEquals(1, entity.ticketsPartialWon, "Deve ter 1 ticket com vitória parcial")
     }
 }

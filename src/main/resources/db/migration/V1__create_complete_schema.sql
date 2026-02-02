@@ -36,6 +36,7 @@ CREATE TABLE core.users (
     role VARCHAR(50) NOT NULL DEFAULT 'USER',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     password_hash VARCHAR(255),
+    date_of_birth BIGINT NOT NULL,
     created_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000)),
     updated_at BIGINT NOT NULL DEFAULT (floor(EXTRACT(EPOCH FROM NOW()) * 1000))
 );

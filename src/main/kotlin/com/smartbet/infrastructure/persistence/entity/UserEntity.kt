@@ -25,7 +25,10 @@ class UserEntity(
     
     @Column(name = "avatar_url")
     var avatarUrl: String? = null,
-    
+
+    @Column(name = "date_of_birth")
+    var dateOfBirth: Long? = null,
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     var role: UserRole = UserRole.USER,
@@ -44,6 +47,7 @@ class UserEntity(
         externalId = externalId,
         email = email,
         name = name,
+        dateOfBirth = dateOfBirth,
         avatarUrl = avatarUrl,
         role = role,
         isActive = isActive,
@@ -58,6 +62,7 @@ class UserEntity(
             email = user.email,
             name = user.name,
             avatarUrl = user.avatarUrl,
+            dateOfBirth = user.dateOfBirth,
             role = user.role,
             isActive = user.isActive,
             createdAt = user.createdAt,
