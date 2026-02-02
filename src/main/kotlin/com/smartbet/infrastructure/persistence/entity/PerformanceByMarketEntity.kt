@@ -61,17 +61,7 @@ data class PerformanceByMarketEntity(
     @Column(name = "tickets_total_lost", nullable = false)
     var ticketsTotalLost: Int = 0,
 
-    // Métricas financeiras
-    @Column(name = "total_stake", nullable = false, precision = 15, scale = 2)
-    var totalStake: BigDecimal = BigDecimal.ZERO,
-
-    @Column(name = "total_profit", nullable = false, precision = 15, scale = 2)
-    var totalProfit: BigDecimal = BigDecimal.ZERO,
-
     // Métricas calculadas
-    @Column(name = "roi", nullable = false, precision = 10, scale = 4)
-    var roi: BigDecimal = BigDecimal.ZERO,
-
     @Column(name = "win_rate", nullable = false, precision = 5, scale = 2)
     var winRate: BigDecimal = BigDecimal.ZERO,
 

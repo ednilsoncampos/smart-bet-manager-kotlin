@@ -147,9 +147,6 @@ data class PerformanceByTournamentResponse(
     val winRate: BigDecimal,
     /** Taxa de sucesso - vitórias totais + parciais (FULL_WIN + PARTIAL_WIN) em % */
     val successRate: BigDecimal,
-    val totalStaked: BigDecimal,
-    val profitLoss: BigDecimal,
-    val roi: BigDecimal,
     /** Média das odds dos tickets neste torneio */
     val avgOdd: BigDecimal?,
 
@@ -191,9 +188,6 @@ data class PerformanceByMarketResponse(
     val winRate: BigDecimal,
     /** Taxa de sucesso - vitórias totais + parciais (FULL_WIN + PARTIAL_WIN) em % */
     val successRate: BigDecimal,
-    val totalStaked: BigDecimal,
-    val profitLoss: BigDecimal,
-    val roi: BigDecimal,
     /** Média das odds das seleções neste mercado */
     val avgOdd: BigDecimal?,
 

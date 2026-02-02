@@ -520,12 +520,7 @@ CREATE TABLE analytics.performance_by_market (
     tickets_partial_lost INT NOT NULL DEFAULT 0,
     tickets_total_lost INT NOT NULL DEFAULT 0,
 
-    -- Métricas financeiras
-    total_stake DECIMAL(15,2) NOT NULL DEFAULT 0,
-    total_profit DECIMAL(15,2) NOT NULL DEFAULT 0,
-
     -- Métricas calculadas
-    roi DECIMAL(10,4) NOT NULL DEFAULT 0,
     win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     success_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     avg_odd DECIMAL(10,4) DEFAULT NULL,
@@ -542,9 +537,8 @@ CREATE TABLE analytics.performance_by_market (
         FOREIGN KEY (user_id) REFERENCES core.users(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_performance_market_user_roi ON analytics.performance_by_market(user_id, roi DESC);
-CREATE INDEX idx_performance_market_profit ON analytics.performance_by_market(total_profit DESC);
-CREATE INDEX idx_performance_market_type_roi ON analytics.performance_by_market(market_type, roi DESC);
+CREATE INDEX idx_performance_market_user_winrate ON analytics.performance_by_market(user_id, win_rate DESC);
+CREATE INDEX idx_performance_market_type_winrate ON analytics.performance_by_market(market_type, win_rate DESC);
 
 COMMENT ON TABLE analytics.performance_by_market IS 'Performance agregada por usuário e tipo de mercado';
 COMMENT ON COLUMN analytics.performance_by_market.total_selections IS 'Total de seleções (uma aposta múltipla conta N vezes)';
@@ -577,12 +571,7 @@ CREATE TABLE analytics.performance_by_tournament (
     tickets_partial_lost INT NOT NULL DEFAULT 0,
     tickets_total_lost INT NOT NULL DEFAULT 0,
 
-    -- Métricas financeiras
-    total_stake DECIMAL(15,2) NOT NULL DEFAULT 0,
-    total_profit DECIMAL(15,2) NOT NULL DEFAULT 0,
-
     -- Métricas calculadas
-    roi DECIMAL(10,4) NOT NULL DEFAULT 0,
     win_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     success_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
     avg_odd DECIMAL(10,4) DEFAULT NULL,
@@ -601,9 +590,8 @@ CREATE TABLE analytics.performance_by_tournament (
         FOREIGN KEY (tournament_id) REFERENCES betting.tournaments(id) ON DELETE CASCADE
 );
 
-CREATE INDEX idx_performance_tournament_user_roi ON analytics.performance_by_tournament(user_id, roi DESC);
-CREATE INDEX idx_performance_tournament_user_profit ON analytics.performance_by_tournament(user_id, total_profit DESC);
-CREATE INDEX idx_performance_tournament_comparison ON analytics.performance_by_tournament(tournament_id, roi DESC);
+CREATE INDEX idx_performance_tournament_user_winrate ON analytics.performance_by_tournament(user_id, win_rate DESC);
+CREATE INDEX idx_performance_tournament_comparison ON analytics.performance_by_tournament(tournament_id, win_rate DESC);
 
 COMMENT ON TABLE analytics.performance_by_tournament IS 'Performance agregada por usuário e torneio/campeonato';
 COMMENT ON COLUMN analytics.performance_by_tournament.win_rate IS 'Taxa de acerto pura - apenas FULL_WIN em %';

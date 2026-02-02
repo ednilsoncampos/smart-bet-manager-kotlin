@@ -55,9 +55,6 @@ class PerformanceAnalyticServiceRateCalculationTest {
             ticketsBreakEven = 0,
             ticketsPartialLost = 0,
             ticketsTotalLost = 0,
-            totalStake = BigDecimal("10.00"),
-            totalProfit = BigDecimal("35.59"),
-            roi = BigDecimal("355.9000"),  // ROI correto
             winRate = BigDecimal.ZERO,     // PROBLEMA: taxa zerada no banco
             successRate = BigDecimal.ZERO, // PROBLEMA: taxa zerada no banco
             avgOdd = BigDecimal("4.559"),
@@ -86,9 +83,6 @@ class PerformanceAnalyticServiceRateCalculationTest {
 
         // Success rate deve ser 100% (1 vitória total / 1 aposta total)
         assertEquals(BigDecimal("100.00"), bundesliga.successRate)
-
-        // ROI deve ser recalculado corretamente
-        assertEquals(BigDecimal("355.9000"), bundesliga.roi)
     }
 
     @Test
@@ -108,9 +102,6 @@ class PerformanceAnalyticServiceRateCalculationTest {
             ticketsBreakEven = 0,
             ticketsPartialLost = 0,
             ticketsTotalLost = 1,
-            totalStake = BigDecimal("20.00"),
-            totalProfit = BigDecimal("17.04"),
-            roi = BigDecimal.ZERO,         // ROI zerado no banco
             winRate = BigDecimal.ZERO,     // Taxa zerada no banco
             successRate = BigDecimal.ZERO, // Taxa zerada no banco
             avgOdd = BigDecimal("2.852"),
@@ -139,9 +130,6 @@ class PerformanceAnalyticServiceRateCalculationTest {
 
         // Success rate deve ser 50% (1 vitória total / 2 apostas)
         assertEquals(BigDecimal("50.00"), serieA.successRate)
-
-        // ROI deve ser 85.2% (17.04 / 20.00 * 100)
-        assertEquals(BigDecimal("85.2000"), serieA.roi)
     }
 
     @Test
@@ -161,9 +149,6 @@ class PerformanceAnalyticServiceRateCalculationTest {
             ticketsBreakEven = 0,
             ticketsPartialLost = 0,
             ticketsTotalLost = 1,
-            totalStake = BigDecimal("10.00"),
-            totalProfit = BigDecimal("-0.51"),
-            roi = BigDecimal.ZERO,         // ROI zerado no banco
             winRate = BigDecimal.ZERO,     // Taxa corretamente zerada
             successRate = BigDecimal.ZERO, // Taxa corretamente zerada
             avgOdd = BigDecimal("1.949"),
@@ -192,9 +177,6 @@ class PerformanceAnalyticServiceRateCalculationTest {
 
         // Success rate deve ser 0% (0 vitórias / 1 aposta)
         assertEquals(BigDecimal("0.00"), paulista.successRate)
-
-        // ROI deve ser -5.1% (-0.51 / 10.00 * 100)
-        assertEquals(BigDecimal("-5.1000"), paulista.roi)
     }
 
     @Test
@@ -214,9 +196,6 @@ class PerformanceAnalyticServiceRateCalculationTest {
             ticketsBreakEven = 0,
             ticketsPartialLost = 0,
             ticketsTotalLost = 1,
-            totalStake = BigDecimal("20.00"),
-            totalProfit = BigDecimal("5.00"),
-            roi = BigDecimal.ZERO,
             winRate = BigDecimal.ZERO,
             successRate = BigDecimal.ZERO,
             avgOdd = BigDecimal("2.500"),
@@ -245,8 +224,5 @@ class PerformanceAnalyticServiceRateCalculationTest {
 
         // Success rate deve ser 50% (1 vitória parcial + 0 completas / 2 apostas)
         assertEquals(BigDecimal("50.00"), copa.successRate)
-
-        // ROI deve ser 25% (5.00 / 20.00 * 100)
-        assertEquals(BigDecimal("25.0000"), copa.roi)
     }
 }
