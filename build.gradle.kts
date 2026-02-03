@@ -82,13 +82,6 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-
-    // TestContainers configuration for Windows Docker Desktop
-    systemProperty("testcontainers.docker.socket.override", "/var/run/docker.sock")
-    systemProperty("testcontainers.reuse.enable", "true")
-
-    // Add all system environment variables to the test JVM
-    environment(System.getenv())
 }
 
 // Flyway configuration is managed by Spring Boot via application.yml
