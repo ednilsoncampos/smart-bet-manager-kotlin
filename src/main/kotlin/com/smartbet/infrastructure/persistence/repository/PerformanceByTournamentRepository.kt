@@ -21,7 +21,7 @@ interface PerformanceByTournamentRepository : JpaRepository<PerformanceByTournam
     fun findByIdUserIdAndIdTournamentId(userId: Long, tournamentId: Long): PerformanceByTournamentEntity?
 
     /**
-     * Lista todas as performances de um usuário por torneio ordenadas por ROI descendente.
+     * Lista todas as performances de um usuário por torneio ordenadas por taxa de acerto descendente.
      *
      * @param userId ID do usuário
      * @return Lista de performances por torneio
@@ -29,9 +29,9 @@ interface PerformanceByTournamentRepository : JpaRepository<PerformanceByTournam
     @Query("""
         SELECT p FROM PerformanceByTournamentEntity p
         WHERE p.id.userId = :userId
-        ORDER BY p.roi DESC
+        ORDER BY p.winRate DESC
     """)
-    fun findByIdUserIdOrderByRoiDesc(userId: Long): List<PerformanceByTournamentEntity>
+    fun findByIdUserIdOrderByWinRateDesc(userId: Long): List<PerformanceByTournamentEntity>
 
     /**
      * Lista todas as performances de um usuário por torneio.
