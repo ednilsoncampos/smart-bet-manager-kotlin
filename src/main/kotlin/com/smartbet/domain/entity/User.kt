@@ -14,7 +14,10 @@ data class User(
     
     /** Nome do usuário */
     val name: String,
-    
+
+    /** Timestamp de data de nascimento (milissegundos desde epoch UTC) */
+    val dateOfBirth: Long? = null,
+
     /** URL do avatar */
     val avatarUrl: String? = null,
     

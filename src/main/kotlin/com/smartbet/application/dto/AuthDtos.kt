@@ -3,6 +3,7 @@ package com.smartbet.application.dto
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size
+import jakarta.validation.constraints.NotNull
 
 // === Request DTOs ===
 
@@ -26,7 +27,10 @@ data class RegisterRequest(
     
     @field:NotBlank(message = "Senha é obrigatória")
     @field:Size(min = 6, max = 100, message = "Senha deve ter entre 6 e 100 caracteres")
-    val password: String
+    val password: String,
+
+    @field:NotNull(message = "Data de nascimento é obrigatória")
+    val dateOfBirth: Long?
 )
 
 data class RefreshTokenRequest(
@@ -57,7 +61,8 @@ data class UserResponse(
     val id: Long,
     val name: String,
     val email: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val dateOfBirth: Long? = null
 )
 
 data class TokenRefreshResponse(

@@ -233,9 +233,6 @@ class PerformanceAnalyticServiceTest {
                 ticketsBreakEven = 0,
                 ticketsPartialLost = 0,
                 ticketsTotalLost = 12,
-                totalStake = BigDecimal("3000.00"),
-                totalProfit = BigDecimal("600.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
                 successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.0000"),
@@ -256,9 +253,6 @@ class PerformanceAnalyticServiceTest {
                 ticketsBreakEven = 0,
                 ticketsPartialLost = 0,
                 ticketsTotalLost = 8,
-                totalStake = BigDecimal("2000.00"),
-                totalProfit = BigDecimal("400.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
                 successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.5000"),
@@ -361,9 +355,6 @@ class PerformanceAnalyticServiceTest {
                 ticketsBreakEven = 0,
                 ticketsPartialLost = 0,
                 ticketsTotalLost = 8,
-                totalStake = BigDecimal("2000.00"),
-                totalProfit = BigDecimal("400.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
                 successRate = BigDecimal("60.00"),
                 avgStake = BigDecimal("100.00"),
@@ -383,9 +374,6 @@ class PerformanceAnalyticServiceTest {
                 ticketsBreakEven = 0,
                 ticketsPartialLost = 0,
                 ticketsTotalLost = 12,
-                totalStake = BigDecimal("3000.00"),
-                totalProfit = BigDecimal("600.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
                 successRate = BigDecimal("60.00"),
                 avgStake = BigDecimal("100.00"),
@@ -484,9 +472,6 @@ class PerformanceAnalyticServiceTest {
                 losses = 40,
                 voids = 5,
                 uniqueTickets = 80,
-                totalStake = BigDecimal("8000.00"),
-                totalProfit = BigDecimal("1600.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("62.50"),
                 avgOdd = BigDecimal("2.2000"),
                 firstBetAt = 1704067200000L,
@@ -507,9 +492,6 @@ class PerformanceAnalyticServiceTest {
             assertEquals(40L, marketStats.losses)
             assertEquals(5L, marketStats.voids)
             assertEquals(BigDecimal("62.50"), marketStats.winRate)
-            assertEquals(BigDecimal("8000.00"), marketStats.totalStaked)
-            assertEquals(BigDecimal("1600.00"), marketStats.profitLoss)
-            assertEquals(BigDecimal("20.0000"), marketStats.roi)
             assertEquals(BigDecimal("2.2000"), marketStats.avgOdd)
             assertEquals(1704067200000L, marketStats.firstBetAt)
             assertEquals(1735689600000L, marketStats.lastSettledAt)
@@ -541,9 +523,6 @@ class PerformanceAnalyticServiceTest {
                 losses = 20,
                 voids = 0,
                 uniqueTickets = 25,
-                totalStake = BigDecimal("2500.00"),
-                totalProfit = BigDecimal("500.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("3.0000"),
                 firstBetAt = 1704067200000L,
@@ -590,9 +569,6 @@ class PerformanceAnalyticServiceTest {
                 ticketsBreakEven = 1,
                 ticketsPartialLost = 0,
                 ticketsTotalLost = 14,
-                totalStake = BigDecimal("4000.00"),
-                totalProfit = BigDecimal("800.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("62.50"),
                 successRate = BigDecimal("62.50"),
                 avgOdd = BigDecimal("2.1000"),
@@ -616,9 +592,6 @@ class PerformanceAnalyticServiceTest {
             assertEquals(14L, tournamentStats.losses)
             assertEquals(1L, tournamentStats.voids)
             assertEquals(BigDecimal("62.50"), tournamentStats.winRate)
-            assertEquals(BigDecimal("4000.00"), tournamentStats.totalStaked)
-            assertEquals(BigDecimal("800.00"), tournamentStats.profitLoss)
-            assertEquals(BigDecimal("20.0000"), tournamentStats.roi)
             assertEquals(BigDecimal("2.1000"), tournamentStats.avgOdd)
             assertEquals(1704067200000L, tournamentStats.firstBetAt)
             assertEquals(1735689600000L, tournamentStats.lastSettledAt)
@@ -669,9 +642,6 @@ class PerformanceAnalyticServiceTest {
                 ticketsBreakEven = 0,
                 ticketsPartialLost = 0,
                 ticketsTotalLost = 12,
-                totalStake = BigDecimal("3000.00"),
-                totalProfit = BigDecimal("600.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
                 successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.0000"),
@@ -690,9 +660,6 @@ class PerformanceAnalyticServiceTest {
                 ticketsBreakEven = 0,
                 ticketsPartialLost = 0,
                 ticketsTotalLost = 8,
-                totalStake = BigDecimal("2000.00"),
-                totalProfit = BigDecimal("400.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
                 successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.5000"),
@@ -727,9 +694,6 @@ class PerformanceAnalyticServiceTest {
                 ticketsBreakEven = 0,
                 ticketsPartialLost = 0,
                 ticketsTotalLost = 4,
-                totalStake = BigDecimal("1000.00"),
-                totalProfit = BigDecimal("200.00"),
-                roi = BigDecimal("20.0000"),
                 winRate = BigDecimal("60.00"),
                 successRate = BigDecimal("60.00"),
                 avgOdd = BigDecimal("2.0000"),

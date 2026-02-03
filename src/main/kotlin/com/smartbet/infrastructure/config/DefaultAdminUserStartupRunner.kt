@@ -9,6 +9,8 @@ import org.springframework.boot.ApplicationRunner
 import org.springframework.core.annotation.Order
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Component
+import java.time.LocalDate
+import java.time.ZoneId
 
 /**
  * Componente que cria um usuário ADMIN padrão no startup da aplicação.
@@ -56,10 +58,12 @@ class DefaultAdminUserStartupRunner(
         logger.info("Creating default admin user: $ADMIN_EMAIL")
 
         val now = System.currentTimeMillis()
+        val adminDateOfBirth = LocalDate.of(1984, 1, 1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val adminUser = UserEntity(
             name = ADMIN_NAME,
             email = ADMIN_EMAIL,
             passwordHash = passwordEncoder.encode(ADMIN_PASSWORD),
+            dateOfBirth = adminDateOfBirth,
             role = UserRole.ADMIN,
             isActive = true,
             createdAt = now,

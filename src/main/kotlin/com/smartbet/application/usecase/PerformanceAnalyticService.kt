@@ -143,10 +143,6 @@ class PerformanceAnalyticService(
                 // Recalcula taxas para garantir valores corretos mesmo se o banco estiver desatualizado
                 winRate = calculateRate(performance.ticketsFullWon, performance.totalTickets),
                 successRate = calculateRate(performance.ticketsWon, performance.totalTickets),
-                totalStaked = performance.totalStake,
-                profitLoss = performance.totalProfit,
-                // Recalcula ROI para garantir consistência
-                roi = calculateRoi(performance.totalProfit, performance.totalStake),
                 avgOdd = performance.avgOdd,
                 fullWinRate = calculateRate(performance.ticketsFullWon, performance.totalTickets),
                 partialWinRate = calculateRate(performance.ticketsPartialWon, performance.totalTickets),
@@ -228,11 +224,11 @@ class PerformanceAnalyticService(
                     breakEven = performance.ticketsBreakEven.toLong(),
                     partialLosses = performance.ticketsPartialLost.toLong(),
                     totalLosses = performance.ticketsTotalLost.toLong(),
-                    winRate = performance.winRate,
-                    successRate = performance.successRate,
-                    totalStaked = performance.totalStake,
-                    profitLoss = performance.totalProfit,
-                    roi = performance.roi,
+                    winRate = calculateRate(performance.wins, performance.totalSelections),
+                    successRate = calculateRate(
+                        performance.ticketsFullWon + performance.ticketsPartialWon,
+                        performance.uniqueTickets
+                    ),
                     avgOdd = performance.avgOdd,
                     fullWinRate = calculateRate(performance.ticketsFullWon, performance.uniqueTickets),
                     partialWinRate = calculateRate(performance.ticketsPartialWon, performance.uniqueTickets),
@@ -290,8 +286,6 @@ class PerformanceAnalyticService(
                 ticketsBreakEven = market.ticketsBreakEven,
                 ticketsPartialLost = market.ticketsPartialLost,
                 ticketsTotalLost = market.ticketsTotalLost,
-                totalStake = market.totalStake,
-                totalProfit = market.totalProfit,
                 firstBetAt = market.firstBetAt,
                 lastSettledAt = market.lastSettledAt
             )
@@ -315,8 +309,6 @@ class PerformanceAnalyticService(
                 existing.ticketsBreakEven += betBuilderPerformance.ticketsBreakEven
                 existing.ticketsPartialLost += betBuilderPerformance.ticketsPartialLost
                 existing.ticketsTotalLost += betBuilderPerformance.ticketsTotalLost
-                existing.totalStake += betBuilderPerformance.totalStake
-                existing.totalProfit += betBuilderPerformance.totalProfit
 
                 // Atualiza timestamps
                 existing.firstBetAt = minOf(existing.firstBetAt ?: Long.MAX_VALUE, betBuilderPerformance.firstBetAt ?: Long.MAX_VALUE)
@@ -335,8 +327,6 @@ class PerformanceAnalyticService(
                     ticketsBreakEven = betBuilderPerformance.ticketsBreakEven,
                     ticketsPartialLost = betBuilderPerformance.ticketsPartialLost,
                     ticketsTotalLost = betBuilderPerformance.ticketsTotalLost,
-                    totalStake = betBuilderPerformance.totalStake,
-                    totalProfit = betBuilderPerformance.totalProfit,
                     firstBetAt = betBuilderPerformance.firstBetAt,
                     lastSettledAt = betBuilderPerformance.lastSettledAt
                 )
@@ -360,9 +350,6 @@ class PerformanceAnalyticService(
                 // Taxas corrigidas: winRate baseado em SELEÇÕES, successRate baseado em TICKETS
                 winRate = calculateRate(data.wins, data.totalSelections),
                 successRate = calculateRate(data.ticketsFullWon + data.ticketsPartialWon, data.uniqueTickets),
-                totalStaked = data.totalStake,
-                profitLoss = data.totalProfit,
-                roi = calculateRoi(data.totalProfit, data.totalStake),
                 avgOdd = null, // Média de odds é complexa de agregar
                 fullWinRate = calculateRate(data.ticketsFullWon, data.uniqueTickets),
                 partialWinRate = calculateRate(data.ticketsPartialWon, data.uniqueTickets),
@@ -394,11 +381,11 @@ class PerformanceAnalyticService(
             breakEven = performance.ticketsBreakEven.toLong(),
             partialLosses = performance.ticketsPartialLost.toLong(),
             totalLosses = performance.ticketsTotalLost.toLong(),
-            winRate = performance.winRate,
-            successRate = performance.successRate,
-            totalStaked = performance.totalStake,
-            profitLoss = performance.totalProfit,
-            roi = performance.roi,
+            winRate = calculateRate(performance.wins, performance.totalSelections),
+            successRate = calculateRate(
+                performance.ticketsFullWon + performance.ticketsPartialWon,
+                performance.uniqueTickets
+            ),
             avgOdd = performance.avgOdd,
             fullWinRate = calculateRate(performance.ticketsFullWon, performance.uniqueTickets),
             partialWinRate = calculateRate(performance.ticketsPartialWon, performance.uniqueTickets),
@@ -425,8 +412,6 @@ class PerformanceAnalyticService(
         var ticketsBreakEven: Int,
         var ticketsPartialLost: Int,
         var ticketsTotalLost: Int,
-        var totalStake: BigDecimal,
-        var totalProfit: BigDecimal,
         var firstBetAt: Long?,
         var lastSettledAt: Long
     )
